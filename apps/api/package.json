@@ -6,6 +6,8 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
+    "test": "pnpm test:health",
+    "test:health": "pnpm build && node --test test/health.test.mjs",
     "db:prepare": "node scripts/ensure-pgvector.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
