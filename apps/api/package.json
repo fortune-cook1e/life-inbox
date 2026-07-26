@@ -6,8 +6,7 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "test": "pnpm test:health",
-    "test:health": "pnpm build && node --test test/health.test.mjs",
+    "test": "vitest run",
     "db:prepare": "node scripts/ensure-pgvector.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -35,6 +34,7 @@
     "@types/pg": "8.15.5",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.10"
   }
 }

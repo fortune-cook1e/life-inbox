@@ -8,9 +8,9 @@
     "moduleResolution": "nodenext",
     "outDir": "./dist",
     "removeComments": true,
-    "rootDir": "./src",
+    "rootDir": ".",
     "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
