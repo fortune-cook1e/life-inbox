@@ -11,6 +11,10 @@ export class DatabaseService implements OnApplicationShutdown {
     private readonly connection: DatabaseConnection,
   ) {}
 
+  get db() {
+    return this.connection.db;
+  }
+
   async ping() {
     await this.connection.db.execute(sql`select 1 as ok`);
   }
