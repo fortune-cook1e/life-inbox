@@ -1,11 +1,25 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 
-import { CreateMessageDto } from "./create-message.dto.js";
+import { CreateMessageDto, ListMessagesQueryDto } from "./messages.dto.js";
+import { toMessageResponse } from "./messages.mapper.js";
 import { MessagesService } from "./messages.service.js";
 
 @Controller("messages")
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
+
+  @Get()
+  async listMessages(@Query() query: ListMessagesQueryDto) {
+    const result = await this.messagesService.listRecentMessages({
+      limit: query.limit,
+      cursor: query.cursor,
+    });
+
+    return {
+      items: result.messages.map(toMessageResponse),
+      pageInfo: result.pageInfo,
+    };
+  }
 
   @Post()
   async createMessage(@Body() input: CreateMessageDto) {
@@ -15,13 +29,7 @@ export class MessagesController {
     });
 
     return {
-      message: {
-        id: chatMessage.id,
-        role: chatMessage.role,
-        kind: chatMessage.kind,
-        content: chatMessage.content,
-        createdAt: chatMessage.createdAt,
-      },
+      message: toMessageResponse(chatMessage),
     };
   }
 }

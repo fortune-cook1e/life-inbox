@@ -124,6 +124,115 @@ it.each([
   expect(await countRows(databaseClient)).toEqual(before);
 });
 
+it("GET /messages returns the latest page in stable chronological order", async () => {
+  const messageIds = [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002",
+    "00000000-0000-0000-0000-000000000003",
+  ] satisfies [string, string, string];
+
+  try {
+    await databaseClient.query(
+      `
+        insert into chat_messages (
+          id,
+          role,
+          kind,
+          content,
+          created_at
+        )
+        values
+          ($1, 'SYSTEM', 'STATUS', 'First tied message',  '2099-01-01T10:00:00.000Z'),
+          ($2, 'SYSTEM', 'STATUS', 'Second tied message', '2099-01-01T10:00:00.000Z'),
+          ($3, 'SYSTEM', 'STATUS', 'Latest message',       '2099-01-01T10:01:00.000Z')
+      `,
+      messageIds,
+    );
+
+    const latestPageResponse = await fetch(`${baseUrl}/messages?limit=2`);
+    const latestPage = (await latestPageResponse.json()) as MessagesPageResponse;
+
+    expect(latestPageResponse.status).toBe(200);
+    expect(latestPage.items.map((message) => message.id)).toEqual([messageIds[1], messageIds[2]]);
+    expect(latestPage.pageInfo).toEqual({
+      hasMore: true,
+      nextCursor: expect.any(String),
+    });
+
+    const olderPageResponse = await fetch(
+      `${baseUrl}/messages?limit=2&cursor=${encodeURIComponent(latestPage.pageInfo.nextCursor!)}`,
+    );
+    const olderPage = (await olderPageResponse.json()) as MessagesPageResponse;
+
+    expect(olderPageResponse.status).toBe(200);
+    expect(
+      olderPage.items
+        .map((message) => message.id)
+        .filter((id) => messageIds.includes(id)),
+    ).toEqual([messageIds[0]]);
+    expect(olderPage.items.map((message) => message.id)).not.toContain(messageIds[1]);
+    expect(olderPage.items.map((message) => message.id)).not.toContain(messageIds[2]);
+
+    const completePageResponse = await fetch(`${baseUrl}/messages?limit=3`);
+    const completePage = (await completePageResponse.json()) as MessagesPageResponse;
+
+    expect(completePageResponse.status).toBe(200);
+    expect(completePage.items.map((message) => message.id)).toEqual(messageIds);
+
+    for (const message of completePage.items) {
+      expect(message).not.toHaveProperty("caseId");
+      expect(message).not.toHaveProperty("clientMessageId");
+    }
+
+    const oldestResult = await databaseClient.query<{ created_at: Date }>(
+      "select min(created_at) as created_at from chat_messages",
+    );
+    const oldestCreatedAt = oldestResult.rows[0]?.created_at;
+
+    expect(oldestCreatedAt).toBeInstanceOf(Date);
+
+    const exhaustedCursor = Buffer.from(
+      JSON.stringify({
+        id: "00000000-0000-0000-0000-000000000000",
+        createdAt: new Date(oldestCreatedAt!.getTime() - 1).toISOString(),
+      }),
+    ).toString("base64url");
+    const exhaustedPageResponse = await fetch(
+      `${baseUrl}/messages?cursor=${encodeURIComponent(exhaustedCursor)}`,
+    );
+    const exhaustedPage = (await exhaustedPageResponse.json()) as MessagesPageResponse;
+
+    expect(exhaustedPageResponse.status).toBe(200);
+    expect(exhaustedPage).toEqual({
+      items: [],
+      pageInfo: {
+        hasMore: false,
+        nextCursor: null,
+      },
+    });
+  } finally {
+    await databaseClient.query(
+      `
+        delete from chat_messages
+        where id = any($1::uuid[])
+      `,
+      [messageIds],
+    );
+  }
+});
+
+it.each(["0", "101", "not-a-number"])("GET /messages rejects limit=%s", async (limit) => {
+  const response = await fetch(`${baseUrl}/messages?limit=${limit}`);
+
+  expect(response.status).toBe(400);
+});
+
+it("GET /messages rejects an invalid cursor", async () => {
+  const response = await fetch(`${baseUrl}/messages?cursor=not-a-valid-cursor`);
+
+  expect(response.status).toBe(400);
+});
+
 function postMessage(body: object) {
   return fetch(`${baseUrl}/messages`, {
     method: "POST",
@@ -179,5 +288,13 @@ interface MessageResponse {
     kind: "USER_TEXT";
     content: string;
     createdAt: string;
+  };
+}
+
+interface MessagesPageResponse {
+  items: MessageResponse["message"][];
+  pageInfo: {
+    hasMore: boolean;
+    nextCursor: string | null;
   };
 }
