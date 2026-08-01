@@ -1,13 +1,13 @@
 import { Module } from "@nestjs/common";
 
+import { AgentModule } from "../agent/agent.module.js";
 import { DatabaseModule } from "../database/database.module.js";
+import { MessageTimelineService } from "./message-timeline.service.js";
 import { MessagesController } from "./messages.controller.js";
-import { MessagesService } from "./messages.service.js";
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [AgentModule, DatabaseModule],
   controllers: [MessagesController],
-  providers: [MessagesService],
-  exports: [MessagesService],
+  providers: [MessageTimelineService],
 })
 export class MessagesModule {}

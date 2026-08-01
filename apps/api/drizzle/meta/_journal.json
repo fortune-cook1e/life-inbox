@@ -8,6 +8,20 @@
       "when": 1785074904091,
       "tag": "0000_colossal_falcon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785504352404,
+      "tag": "0001_clumsy_lionheart",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785506845292,
+      "tag": "0002_minor_sage",
+      "breakpoints": true
     }
   ]
 }

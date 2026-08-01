@@ -37,6 +37,8 @@ export const chatMessageKind = pgEnum("chat_message_kind", [
   "STATUS",
 ]);
 
+export const eventStatus = pgEnum("event_status", ["COLLECTING", "READY"]);
+
 export const lifeCases = pgTable(
   "life_cases",
   {
@@ -75,5 +77,59 @@ export const chatMessages = pgTable(
     uniqueIndex("chat_messages_client_message_id_unique").on(table.clientMessageId),
     index("chat_messages_timeline_idx").on(table.createdAt, table.id),
     index("chat_messages_case_timeline_idx").on(table.caseId, table.createdAt, table.id),
+  ],
+);
+
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    caseId: uuid("case_id")
+      .notNull()
+      .references(() => lifeCases.id, {
+        onDelete: "restrict",
+      }),
+    status: eventStatus("status").default("COLLECTING").notNull(),
+    title: text("title"),
+    startAt: timestamp("start_at", { withTimezone: true }),
+    endAt: timestamp("end_at", { withTimezone: true }),
+    timeZone: text("time_zone"),
+    location: text("location"),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("events_case_id_unique").on(table.caseId),
+    check(
+      "events_title_not_blank_check",
+      sql`${table.title} IS NULL OR length(btrim(${table.title})) > 0`,
+    ),
+    check(
+      "events_time_zone_not_blank_check",
+      sql`${table.timeZone} IS NULL OR length(btrim(${table.timeZone})) > 0`,
+    ),
+    check(
+      "events_location_not_blank_check",
+      sql`${table.location} IS NULL OR length(btrim(${table.location})) > 0`,
+    ),
+    check(
+      "events_time_range_check",
+      sql`${table.endAt} IS NULL
+        OR (${table.startAt} IS NOT NULL AND ${table.endAt} > ${table.startAt})`,
+    ),
+    check("events_version_positive_check", sql`${table.version} > 0`),
+    check(
+      "events_ready_fields_check",
+      sql`${table.status} = 'COLLECTING'
+        OR (
+          ${table.title} IS NOT NULL
+          AND ${table.startAt} IS NOT NULL
+          AND ${table.timeZone} IS NOT NULL
+        )`,
+    ),
   ],
 );

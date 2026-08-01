@@ -1,19 +1,16 @@
 import { Type } from "class-transformer";
 import {
-  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsTimeZone,
   Max,
   MaxLength,
   Min,
 } from "class-validator";
 
 export class CreateMessageDto {
-  @IsIn(["NEW_MATTER"])
-  intent!: "NEW_MATTER";
-
   @IsString()
   @IsNotEmpty()
   @MaxLength(128)
@@ -23,6 +20,12 @@ export class CreateMessageDto {
   @IsNotEmpty()
   @MaxLength(10_000)
   content!: string;
+
+  @IsOptional()
+  @IsString()
+  @IsTimeZone()
+  @MaxLength(100)
+  timeZone?: string;
 }
 
 export class ListMessagesQueryDto {

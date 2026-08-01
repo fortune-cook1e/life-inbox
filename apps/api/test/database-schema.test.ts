@@ -1,16 +1,21 @@
 import { randomUUID } from "node:crypto";
 import process from "node:process";
 
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
 import { expect, it } from "vitest";
 
-it("enforces the first LifeCase and ChatMessage invariants", async () => {
+import { events as eventsTable } from "../src/database/schema.js";
+
+it("enforces the first LifeCase, ChatMessage, and Event invariants", async () => {
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
   });
   const clientMessageId = `schema-test-${randomUUID()}`;
 
   await client.connect();
+  const database = drizzle(client);
 
   try {
     await client.query("begin");
@@ -26,6 +31,120 @@ it("enforces the first LifeCase and ChatMessage invariants", async () => {
     expect(lifeCase.status).toBe("OPEN");
     expect(lifeCase.resolution).toBeNull();
     expect(lifeCase.version).toBe(1);
+
+    const eventResult = await client.query(
+      `
+        insert into events (case_id, updated_at)
+        values ($1, '2000-01-01T00:00:00.000Z')
+        returning id, status, title, start_at, end_at, time_zone, location, version, updated_at
+      `,
+      [lifeCase.id],
+    );
+    const event = eventResult.rows[0];
+
+    expect(event).toMatchObject({
+      status: "COLLECTING",
+      title: null,
+      start_at: null,
+      end_at: null,
+      time_zone: null,
+      location: null,
+      version: 1,
+    });
+
+    await client.query("savepoint before_second_case_event");
+    await expect(
+      client.query(
+        `
+          insert into events (case_id)
+          values ($1)
+        `,
+        [lifeCase.id],
+      ),
+    ).rejects.toMatchObject({
+      code: "23505",
+      constraint: "events_case_id_unique",
+    });
+    await client.query("rollback to savepoint before_second_case_event");
+
+    await client.query("savepoint before_incomplete_ready_event");
+    await expect(
+      client.query(
+        `
+          update events
+          set status = 'READY'
+          where id = $1
+        `,
+        [event.id],
+      ),
+    ).rejects.toMatchObject({
+      code: "23514",
+      constraint: "events_ready_fields_check",
+    });
+    await client.query("rollback to savepoint before_incomplete_ready_event");
+
+    for (const invalidUpdate of [
+      {
+        name: "blank title",
+        sql: "update events set title = '   ' where id = $1",
+        constraint: "events_title_not_blank_check",
+      },
+      {
+        name: "blank time zone",
+        sql: "update events set time_zone = '   ' where id = $1",
+        constraint: "events_time_zone_not_blank_check",
+      },
+      {
+        name: "blank location",
+        sql: "update events set location = '   ' where id = $1",
+        constraint: "events_location_not_blank_check",
+      },
+      {
+        name: "non-positive version",
+        sql: "update events set version = 0 where id = $1",
+        constraint: "events_version_positive_check",
+      },
+      {
+        name: "invalid time range",
+        sql: `
+          update events
+          set
+            start_at = '2026-08-01T17:00:00.000Z',
+            end_at = '2026-08-01T17:00:00.000Z'
+          where id = $1
+        `,
+        constraint: "events_time_range_check",
+      },
+    ]) {
+      await client.query("savepoint before_invalid_event_value");
+      await expect(client.query(invalidUpdate.sql, [event.id])).rejects.toMatchObject({
+        code: "23514",
+        constraint: invalidUpdate.constraint,
+      });
+      await client.query("rollback to savepoint before_invalid_event_value");
+      await client.query("release savepoint before_invalid_event_value");
+    }
+
+    const [readyEvent] = await database
+      .update(eventsTable)
+      .set({
+        status: "READY",
+        title: "Do the laundry",
+        startAt: new Date("2026-08-01T17:00:00.000Z"),
+        endAt: new Date("2026-08-01T18:00:00.000Z"),
+        timeZone: "Europe/Stockholm",
+        location: "Laundry room",
+      })
+      .where(eq(eventsTable.id, event.id))
+      .returning();
+
+    expect(readyEvent).toMatchObject({
+      status: "READY",
+      title: "Do the laundry",
+      timeZone: "Europe/Stockholm",
+      location: "Laundry room",
+    });
+    expect(readyEvent?.updatedAt.getTime()).toBeGreaterThan(event.updated_at.getTime());
 
     const messageResult = await client.query(
       `
