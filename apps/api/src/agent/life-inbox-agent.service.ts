@@ -3,6 +3,7 @@ import { stepCountIs, tool, ToolLoopAgent } from "ai";
 import { z } from "zod";
 
 import { AGENT_LANGUAGE_MODEL } from "./agent.constants.js";
+import { toAgentEvent } from "./agent.mapper.js";
 import type { AgentLanguageModelFactory } from "./agent-model.provider.js";
 import { AgentToolsService } from "./agent-tools.service.js";
 import type { AgentExecutionState } from "./agent.types.js";
@@ -69,7 +70,6 @@ export interface RunLifeInboxAgentInput {
   content: string;
   referenceDate: Date;
   defaultTimeZone: string;
-  existingCaseId?: string | null;
 }
 
 @Injectable()
@@ -84,7 +84,6 @@ export class LifeInboxAgentService {
     const modelConfig = this.createLanguageModel();
     const state: AgentExecutionState = {
       inputMessageId: input.inputMessageId,
-      caseId: input.existingCaseId ?? undefined,
     };
     const tools = this.createTools(state, input.defaultTimeZone);
     const agent = new ToolLoopAgent({
@@ -252,26 +251,4 @@ export class AgentRunDidNotFinishError extends Error {
   constructor(readonly stepCount: number) {
     super(`The Agent did not reach a terminal tool within ${stepCount} steps.`);
   }
-}
-
-function toAgentEvent(event: {
-  id: string;
-  status: "COLLECTING" | "READY";
-  title: string | null;
-  startAt: Date | null;
-  endAt: Date | null;
-  timeZone: string | null;
-  location: string | null;
-  version: number;
-}) {
-  return {
-    id: event.id,
-    status: event.status,
-    title: event.title,
-    startAt: event.startAt?.toISOString() ?? null,
-    endAt: event.endAt?.toISOString() ?? null,
-    timeZone: event.timeZone,
-    location: event.location,
-    version: event.version,
-  };
 }

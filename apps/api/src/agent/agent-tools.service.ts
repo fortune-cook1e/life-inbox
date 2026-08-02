@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { DatabaseService } from "../database/database.service.js";
 import { chatMessages, events, lifeCases } from "../database/schema.js";
@@ -8,7 +8,6 @@ import {
   getMissingRequiredEventFields,
   type RequiredEventField,
 } from "../events/event-readiness.js";
-import type { AgentTerminalOutcome } from "./agent.types.js";
 
 export interface CalendarEventProposal {
   title: string | null;
@@ -17,8 +16,6 @@ export interface CalendarEventProposal {
   timeZone: string | null;
   location: string | null;
 }
-
-const terminalMessageKinds = ["CLARIFICATION_QUESTION", "EVENT_PREVIEW"] as const;
 
 @Injectable()
 export class AgentToolsService {
@@ -44,7 +41,6 @@ export class AgentToolsService {
         return {
           ok: true as const,
           caseId: message.caseId,
-          reused: true,
         };
       }
 
@@ -67,7 +63,6 @@ export class AgentToolsService {
       return {
         ok: true as const,
         caseId: lifeCase.id,
-        reused: false,
       };
     });
   }
@@ -93,68 +88,33 @@ export class AgentToolsService {
       };
     }
 
-    const event = await this.databaseService.db.transaction(async (transaction) => {
-      const [existingEvent] = await transaction
-        .select()
-        .from(events)
-        .where(eq(events.caseId, caseId))
-        .for("update")
-        .limit(1);
+    const [insertedEvent] = await this.databaseService.db
+      .insert(events)
+      .values({
+        caseId,
+        status: evaluation.status,
+        ...evaluation.candidate,
+      })
+      .onConflictDoNothing({ target: events.caseId })
+      .returning();
 
-      if (!existingEvent) {
-        const [insertedEvent] = await transaction
-          .insert(events)
-          .values({
-            caseId,
-            status: evaluation.status,
-            ...evaluation.candidate,
-          })
-          .onConflictDoNothing({ target: events.caseId })
-          .returning();
+    const event = insertedEvent ?? (await this.findEventByCaseId(caseId));
 
-        if (insertedEvent) {
-          return insertedEvent;
-        }
+    if (!event) {
+      throw new Error("Creating or loading an Event did not return a row.");
+    }
 
-        const [concurrentEvent] = await transaction
-          .select()
-          .from(events)
-          .where(eq(events.caseId, caseId))
-          .limit(1);
+    const storedEvaluation = evaluateEventCandidate(event);
 
-        if (!concurrentEvent) {
-          throw new Error("The concurrently created Event could not be loaded.");
-        }
-
-        return concurrentEvent;
-      }
-
-      if (hasSameCandidate(existingEvent, evaluation.status, evaluation.candidate)) {
-        return existingEvent;
-      }
-
-      const [updatedEvent] = await transaction
-        .update(events)
-        .set({
-          status: evaluation.status,
-          ...evaluation.candidate,
-          version: sql`${events.version} + 1`,
-        })
-        .where(eq(events.id, existingEvent.id))
-        .returning();
-
-      if (!updatedEvent) {
-        throw new Error("Updating an Event did not return a row.");
-      }
-
-      return updatedEvent;
-    });
+    if (!storedEvaluation.valid) {
+      throw new Error("The stored Event failed backend validation.");
+    }
 
     return {
       ok: true as const,
       event,
-      status: evaluation.status,
-      missingFields: getMissingRequiredEventFields(evaluation.candidate),
+      status: storedEvaluation.status,
+      missingFields: getMissingRequiredEventFields(storedEvaluation.candidate),
     };
   }
 
@@ -203,16 +163,6 @@ export class AgentToolsService {
         };
       }
 
-      const existingOutcome = await this.findTerminalOutcome(transaction, caseId);
-
-      if (existingOutcome) {
-        return {
-          ok: true as const,
-          outcome: existingOutcome,
-          reused: true,
-        };
-      }
-
       const [assistantMessage] = await transaction
         .insert(chatMessages)
         .values({
@@ -230,7 +180,6 @@ export class AgentToolsService {
       return {
         ok: true as const,
         outcome: { event, assistantMessage },
-        reused: false,
       };
     });
   }
@@ -280,16 +229,6 @@ export class AgentToolsService {
         };
       }
 
-      const existingOutcome = await this.findTerminalOutcome(transaction, caseId);
-
-      if (existingOutcome) {
-        return {
-          ok: true as const,
-          outcome: existingOutcome,
-          reused: true,
-        };
-      }
-
       const [assistantMessage] = await transaction
         .insert(chatMessages)
         .values({
@@ -307,84 +246,21 @@ export class AgentToolsService {
       return {
         ok: true as const,
         outcome: { event, assistantMessage },
-        reused: false,
       };
     });
   }
 
-  async findOutcomeForMessage(inputMessageId: string) {
-    const [message] = await this.databaseService.db
-      .select({ caseId: chatMessages.caseId })
-      .from(chatMessages)
-      .where(eq(chatMessages.id, inputMessageId))
-      .limit(1);
-
-    if (!message?.caseId) {
-      return undefined;
-    }
-
-    return this.findTerminalOutcome(this.databaseService.db, message.caseId);
-  }
-
-  // find the recent reply from assistant for a given caseId
-  private async findTerminalOutcome(
-    database: Pick<typeof this.databaseService.db, "select">,
-    caseId: string,
-  ): Promise<AgentTerminalOutcome | undefined> {
-    const [outcome] = await database
-      .select({
-        event: events,
-        assistantMessage: chatMessages,
-      })
+  private async findEventByCaseId(caseId: string) {
+    const [event] = await this.databaseService.db
+      .select()
       .from(events)
-      .innerJoin(
-        chatMessages,
-        and(
-          eq(chatMessages.caseId, events.caseId),
-          eq(chatMessages.role, "ASSISTANT"),
-          inArray(chatMessages.kind, terminalMessageKinds),
-        ),
-      )
       .where(eq(events.caseId, caseId))
-      .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
       .limit(1);
 
-    return outcome;
+    return event;
   }
 }
 
 function toDate(value: string | null) {
   return value === null ? null : new Date(value);
-}
-
-function hasSameCandidate(
-  event: {
-    status: "COLLECTING" | "READY";
-    title: string | null;
-    startAt: Date | null;
-    endAt: Date | null;
-    timeZone: string | null;
-    location: string | null;
-  },
-  status: "COLLECTING" | "READY",
-  candidate: {
-    title: string | null;
-    startAt: Date | null;
-    endAt: Date | null;
-    timeZone: string | null;
-    location: string | null;
-  },
-) {
-  return (
-    event.status === status &&
-    event.title === candidate.title &&
-    datesEqual(event.startAt, candidate.startAt) &&
-    datesEqual(event.endAt, candidate.endAt) &&
-    event.timeZone === candidate.timeZone &&
-    event.location === candidate.location
-  );
-}
-
-function datesEqual(first: Date | null, second: Date | null) {
-  return first?.getTime() === second?.getTime();
 }

@@ -29,11 +29,19 @@ const agentModel = new MockLanguageModelV4({
     const shouldFail = prompt.includes("Agent provider should fail.");
     const shouldStayInvalid = prompt.includes("Agent keeps proposing invalid data.");
     const shouldPreviewTooEarly = prompt.includes("Agent previews too early.");
-    const hasCreatedCase = prompt.includes('"toolName":"create_case"');
-    const hasProposedEvent = prompt.includes('"toolName":"propose_calendar_event"');
+    const shouldRepeatCase = prompt.includes("Agent repeats case creation.");
+    const shouldRepeatEvent = prompt.includes("Agent repeats event proposal.");
+    const createdCaseCount = countOccurrences(prompt, '"toolName":"create_case"');
+    const proposedEventCount = countOccurrences(prompt, '"toolName":"propose_calendar_event"');
+    const hasCreatedCase = createdCaseCount > 0;
+    const hasProposedEvent = proposedEventCount > 0;
     const hasShownPreview = prompt.includes('"toolName":"show_event_preview"');
 
     if (!hasCreatedCase) {
+      return toolCall("create_case", {});
+    }
+
+    if (shouldRepeatCase && createdCaseCount === 2) {
       return toolCall("create_case", {});
     }
 
@@ -63,6 +71,16 @@ const agentModel = new MockLanguageModelV4({
         endAt: shouldStayInvalid ? "2026-08-04T07:00:00.000Z" : null,
         timeZone: null,
         location: isDentist || isCompleteDentist ? null : "Laundry room",
+      });
+    }
+
+    if (shouldRepeatEvent && proposedEventCount === 2) {
+      return toolCall("propose_calendar_event", {
+        title: "Book the laundry room",
+        startAt: "2026-08-04T08:00:00.000Z",
+        endAt: null,
+        timeZone: null,
+        location: "Laundry room",
       });
     }
 
@@ -104,29 +122,20 @@ afterAll(async () => {
   await app.close();
 });
 
-it("POST /messages creates one internal matter for concurrent retries", async () => {
+it("POST /messages creates one Message, Case, Event, and preview", async () => {
   const clientMessageId = `message-test-${randomUUID()}`;
   const content = "Remind me to book the laundry room next Tuesday.";
 
   try {
     const before = await countRows(databaseClient);
-    const request = {
+    const response = await postMessage({
       clientMessageId,
       content,
-    };
+    });
+    const body = (await response.json()) as MessageResponse;
 
-    const [firstResponse, secondResponse] = await Promise.all([
-      postMessage(request),
-      postMessage(request),
-    ]);
-    const [firstResponseBody, secondResponseBody] = await Promise.all([
-      firstResponse.json() as Promise<MessageResponse>,
-      secondResponse.json() as Promise<MessageResponse>,
-    ]);
-
-    expect([firstResponse.status, secondResponse.status]).toEqual([201, 201]);
-    expect(firstResponseBody).toEqual(secondResponseBody);
-    expect(firstResponseBody).toEqual({
+    expect(response.status).toBe(201);
+    expect(body).toEqual({
       message: {
         id: expect.any(String),
         role: "USER",
@@ -152,31 +161,59 @@ it("POST /messages creates one internal matter for concurrent retries", async ()
         version: 1,
       },
     });
-    expect(firstResponseBody).not.toHaveProperty("lifeCase");
-    expect(firstResponseBody.message).not.toHaveProperty("caseId");
-    expect(firstResponseBody.message).not.toHaveProperty("clientMessageId");
+    expect(body).not.toHaveProperty("lifeCase");
+    expect(body.message).not.toHaveProperty("caseId");
+    expect(body.message).not.toHaveProperty("clientMessageId");
 
-    const afterConcurrentRetry = await countRows(databaseClient);
+    const after = await countRows(databaseClient);
 
-    expect(afterConcurrentRetry.lifeCases).toBe(before.lifeCases + 1);
-    expect(afterConcurrentRetry.chatMessages).toBe(before.chatMessages + 2);
-    expect(afterConcurrentRetry.events).toBe(before.events + 1);
-
-    const conflictResponse = await postMessage({
-      ...request,
-      content: "This is a different user action.",
-    });
-
-    expect(conflictResponse.status).toBe(409);
-    await expect(conflictResponse.json()).resolves.toMatchObject({
-      code: "CLIENT_MESSAGE_ID_REUSED",
-    });
-
-    expect(await countRows(databaseClient)).toEqual(afterConcurrentRetry);
+    expect(after.lifeCases).toBe(before.lifeCases + 1);
+    expect(after.chatMessages).toBe(before.chatMessages + 2);
+    expect(after.events).toBe(before.events + 1);
   } finally {
     await cleanupMatter(databaseClient, clientMessageId);
   }
 });
+
+it.each([
+  {
+    content: "Agent repeats case creation.",
+    expectedTools: ["create_case", "create_case", "propose_calendar_event", "show_event_preview"],
+  },
+  {
+    content: "Agent repeats event proposal.",
+    expectedTools: [
+      "create_case",
+      "propose_calendar_event",
+      "propose_calendar_event",
+      "show_event_preview",
+    ],
+  },
+])(
+  "POST /messages tolerates repeated Agent tool calls for $content",
+  async ({ content, expectedTools }) => {
+    const clientMessageId = `message-test-${randomUUID()}`;
+
+    try {
+      toolCallSequence = [];
+      const before = await countRows(databaseClient);
+      const response = await postMessage({ clientMessageId, content });
+      const body = (await response.json()) as MessageResponse;
+
+      expect(response.status).toBe(201);
+      expect(body.assistantMessage.kind).toBe("EVENT_PREVIEW");
+      expect(toolCallSequence).toEqual(expectedTools);
+
+      const after = await countRows(databaseClient);
+
+      expect(after.lifeCases).toBe(before.lifeCases + 1);
+      expect(after.chatMessages).toBe(before.chatMessages + 2);
+      expect(after.events).toBe(before.events + 1);
+    } finally {
+      await cleanupMatter(databaseClient, clientMessageId);
+    }
+  },
+);
 
 it("POST /messages derives a title from a clear user action", async () => {
   const clientMessageId = `message-test-${randomUUID()}`;
@@ -325,6 +362,7 @@ it("POST /messages preserves the user evidence when the Agent provider fails", a
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({
       code: "AGENT_UNAVAILABLE",
+      message: "Your message was saved, but the Agent could not finish processing it.",
     });
 
     const after = await countRows(databaseClient);
@@ -553,6 +591,10 @@ function toolCall(toolName: string, input: object): MockGenerateResult {
     },
     warnings: [],
   };
+}
+
+function countOccurrences(value: string, search: string) {
+  return value.split(search).length - 1;
 }
 
 async function cleanupMatter(client: Client, clientMessageId: string) {

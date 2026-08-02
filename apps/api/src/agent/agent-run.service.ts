@@ -1,16 +1,13 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   Logger,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { eq } from "drizzle-orm";
 
 import { getDefaultTimeZone } from "../config/app-config.js";
 import { DatabaseService } from "../database/database.service.js";
 import { chatMessages } from "../database/schema.js";
-import { AgentToolsService } from "./agent-tools.service.js";
 import { AgentRunDidNotFinishError, LifeInboxAgentService } from "./life-inbox-agent.service.js";
 
 export interface ProcessTextMessageInput {
@@ -26,20 +23,10 @@ export class AgentRunService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly lifeInboxAgentService: LifeInboxAgentService,
-    private readonly agentToolsService: AgentToolsService,
   ) {}
 
   async processTextMessage(input: ProcessTextMessageInput) {
-    const chatMessage = await this.captureInputMessage(input);
-    const existingOutcome = await this.agentToolsService.findOutcomeForMessage(chatMessage.id);
-
-    // if the message has caseId, it means the agent has already processed this message and created a case for it. In that case, we can return the existing outcome without running the agent again.
-    if (existingOutcome) {
-      return {
-        chatMessage,
-        ...existingOutcome,
-      };
-    }
+    const chatMessage = await this.createInputMessage(input);
 
     try {
       const outcome = await this.lifeInboxAgentService.run({
@@ -47,7 +34,6 @@ export class AgentRunService {
         content: chatMessage.content,
         referenceDate: chatMessage.createdAt,
         defaultTimeZone: input.timeZone ?? getDefaultTimeZone(),
-        existingCaseId: chatMessage.caseId,
       });
 
       this.logger.debug(`Agent completed in ${outcome.stepCount} steps.`);
@@ -67,12 +53,12 @@ export class AgentRunService {
 
       throw new ServiceUnavailableException({
         code,
-        message: "The Agent could not finish this message. Please retry.",
+        message: "Your message was saved, but the Agent could not finish processing it.",
       });
     }
   }
 
-  private async captureInputMessage(input: ProcessTextMessageInput) {
+  private async createInputMessage(input: ProcessTextMessageInput) {
     const clientMessageId = input.clientMessageId.trim();
     const content = input.content.trim();
 
@@ -84,7 +70,7 @@ export class AgentRunService {
       throw new BadRequestException("content must not be blank.");
     }
 
-    const [insertedMessage] = await this.databaseService.db
+    const [chatMessage] = await this.databaseService.db
       .insert(chatMessages)
       .values({
         role: "USER",
@@ -92,30 +78,12 @@ export class AgentRunService {
         content,
         clientMessageId,
       })
-      .onConflictDoNothing({ target: chatMessages.clientMessageId })
       .returning();
 
-    if (insertedMessage) {
-      return insertedMessage;
+    if (!chatMessage) {
+      throw new Error("Creating the input ChatMessage did not return a row.");
     }
 
-    const [existingMessage] = await this.databaseService.db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.clientMessageId, clientMessageId))
-      .limit(1);
-
-    if (!existingMessage) {
-      throw new Error("The idempotent ChatMessage could not be loaded after a conflict.");
-    }
-
-    if (existingMessage.content !== content) {
-      throw new ConflictException({
-        code: "CLIENT_MESSAGE_ID_REUSED",
-        message: "clientMessageId was already used for different content.",
-      });
-    }
-
-    return existingMessage;
+    return chatMessage;
   }
 }
