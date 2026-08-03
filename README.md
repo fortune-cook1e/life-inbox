@@ -1,7 +1,12 @@
 # Life Inbox
 
-pnpm workspace containing a Next.js web app and a NestJS API. Drizzle belongs to
-the API application and connects it to PostgreSQL.
+LifeInbox is a personal assistant project built as a pnpm workspace with a Next.js web app and a
+NestJS API. Drizzle belongs to the API application and connects it to PostgreSQL.
+
+## Documentation
+
+- [Product direction](docs/README.md)
+- [Calendar Assistant feature notes](docs/features/calendar-assistant.md)
 
 ## Requirements
 
@@ -19,7 +24,8 @@ pnpm dev
 ```
 
 - Web: http://localhost:3000
-- API health: http://localhost:3001/health
+- API liveness: http://localhost:3001/health/live
+- API readiness: http://localhost:3001/health/ready
 - PostgreSQL: localhost:5432
 - Redis: localhost:6379
 
