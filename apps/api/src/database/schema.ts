@@ -39,6 +39,17 @@ export const chatMessageKind = pgEnum("chat_message_kind", [
 
 export const eventStatus = pgEnum("event_status", ["COLLECTING", "READY"]);
 
+export const eventTimePrecision = pgEnum("event_time_precision", ["DATE_ONLY", "DATE_TIME"]);
+
+export const pendingQuestionField = pgEnum("pending_question_field", [
+  "title",
+  "startAt",
+  "endAt",
+  "timeZone",
+]);
+
+export const pendingQuestionStatus = pgEnum("pending_question_status", ["OPEN", "RESOLVED"]);
+
 export const lifeCases = pgTable(
   "life_cases",
   {
@@ -92,7 +103,9 @@ export const events = pgTable(
     status: eventStatus("status").default("COLLECTING").notNull(),
     title: text("title"),
     startAt: timestamp("start_at", { withTimezone: true }),
+    startAtPrecision: eventTimePrecision("start_at_precision"),
     endAt: timestamp("end_at", { withTimezone: true }),
+    endAtPrecision: eventTimePrecision("end_at_precision"),
     timeZone: text("time_zone"),
     location: text("location"),
     version: integer("version").default(1).notNull(),
@@ -121,6 +134,16 @@ export const events = pgTable(
       sql`${table.endAt} IS NULL
         OR (${table.startAt} IS NOT NULL AND ${table.endAt} > ${table.startAt})`,
     ),
+    check(
+      "events_start_at_precision_check",
+      sql`(${table.startAt} IS NULL AND ${table.startAtPrecision} IS NULL)
+        OR (${table.startAt} IS NOT NULL AND ${table.startAtPrecision} IS NOT NULL)`,
+    ),
+    check(
+      "events_end_at_precision_check",
+      sql`(${table.endAt} IS NULL AND ${table.endAtPrecision} IS NULL)
+        OR (${table.endAt} IS NOT NULL AND ${table.endAtPrecision} IS NOT NULL)`,
+    ),
     check("events_version_positive_check", sql`${table.version} > 0`),
     check(
       "events_ready_fields_check",
@@ -128,8 +151,55 @@ export const events = pgTable(
         OR (
           ${table.title} IS NOT NULL
           AND ${table.startAt} IS NOT NULL
+          AND ${table.startAtPrecision} = 'DATE_TIME'
+          AND (${table.endAt} IS NULL OR ${table.endAtPrecision} = 'DATE_TIME')
           AND ${table.timeZone} IS NOT NULL
         )`,
+    ),
+  ],
+);
+
+export const pendingQuestions = pgTable(
+  "pending_questions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, {
+        onDelete: "restrict",
+      }),
+    questionMessageId: uuid("question_message_id")
+      .notNull()
+      .references(() => chatMessages.id, {
+        onDelete: "restrict",
+      }),
+    expectedField: pendingQuestionField("expected_field").notNull(),
+    status: pendingQuestionStatus("status").default("OPEN").notNull(),
+    eventVersion: integer("event_version").notNull(),
+    resolvedByMessageId: uuid("resolved_by_message_id").references(() => chatMessages.id, {
+      onDelete: "restrict",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("pending_questions_open_event_unique")
+      .on(table.eventId)
+      .where(sql`${table.status} = 'OPEN'`),
+    uniqueIndex("pending_questions_question_message_id_unique").on(table.questionMessageId),
+    uniqueIndex("pending_questions_resolved_by_message_id_unique").on(table.resolvedByMessageId),
+    index("pending_questions_open_created_idx")
+      .on(table.createdAt.desc(), table.id.desc())
+      .where(sql`${table.status} = 'OPEN'`),
+    check("pending_questions_event_version_positive_check", sql`${table.eventVersion} > 0`),
+    check(
+      "pending_questions_resolution_state_check",
+      sql`(${table.status} = 'OPEN'
+          AND ${table.resolvedByMessageId} IS NULL
+          AND ${table.resolvedAt} IS NULL)
+        OR (${table.status} = 'RESOLVED'
+          AND ${table.resolvedByMessageId} IS NOT NULL
+          AND ${table.resolvedAt} IS NOT NULL)`,
     ),
   ],
 );

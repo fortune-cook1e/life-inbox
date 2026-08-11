@@ -1,25 +1,35 @@
 export interface EventCandidate {
   title?: string | null;
   startAt?: Date | null;
+  startAtPrecision?: EventTimePrecision | null;
   endAt?: Date | null;
+  endAtPrecision?: EventTimePrecision | null;
   timeZone?: string | null;
   location?: string | null;
 }
 
+export type EventTimePrecision = "DATE_ONLY" | "DATE_TIME";
+
 export interface NormalizedEventCandidate {
   title: string | null;
   startAt: Date | null;
+  startAtPrecision: EventTimePrecision | null;
   endAt: Date | null;
+  endAtPrecision: EventTimePrecision | null;
   timeZone: string | null;
   location: string | null;
 }
 
 export type EventCandidateStatus = "COLLECTING" | "READY";
-export type RequiredEventField = "title" | "startAt" | "timeZone";
+export type RequiredEventField = "title" | "startAt" | "endAt" | "timeZone";
 
 export type EventCandidateIssue =
   | "INVALID_START_AT"
   | "INVALID_END_AT"
+  | "INVALID_START_AT_PRECISION"
+  | "INVALID_END_AT_PRECISION"
+  | "START_AT_PRECISION_MISMATCH"
+  | "END_AT_PRECISION_MISMATCH"
   | "END_AT_REQUIRES_START_AT"
   | "END_AT_NOT_AFTER_START_AT"
   | "INVALID_TIME_ZONE";
@@ -40,10 +50,28 @@ export function evaluateEventCandidate(candidate: EventCandidate): EventCandidat
   const normalized = {
     title: normalizeText(candidate.title),
     startAt: normalizeDate(candidate.startAt, "INVALID_START_AT", issues),
+    startAtPrecision: normalizePrecision(
+      candidate.startAtPrecision,
+      "INVALID_START_AT_PRECISION",
+      issues,
+    ),
     endAt: normalizeDate(candidate.endAt, "INVALID_END_AT", issues),
+    endAtPrecision: normalizePrecision(
+      candidate.endAtPrecision,
+      "INVALID_END_AT_PRECISION",
+      issues,
+    ),
     timeZone: normalizeText(candidate.timeZone),
     location: normalizeText(candidate.location),
   } satisfies NormalizedEventCandidate;
+
+  if (Boolean(normalized.startAt) !== Boolean(normalized.startAtPrecision)) {
+    issues.push("START_AT_PRECISION_MISMATCH");
+  }
+
+  if (Boolean(normalized.endAt) !== Boolean(normalized.endAtPrecision)) {
+    issues.push("END_AT_PRECISION_MISMATCH");
+  }
 
   if (normalized.endAt && !normalized.startAt) {
     issues.push("END_AT_REQUIRES_START_AT");
@@ -82,8 +110,12 @@ export function getMissingRequiredEventFields(
     missingFields.push("title");
   }
 
-  if (!candidate.startAt) {
+  if (!candidate.startAt || candidate.startAtPrecision !== "DATE_TIME") {
     missingFields.push("startAt");
+  }
+
+  if (candidate.endAt && candidate.endAtPrecision !== "DATE_TIME") {
+    missingFields.push("endAt");
   }
 
   if (!candidate.timeZone) {
@@ -109,6 +141,23 @@ function normalizeDate(
   }
 
   if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    issues.push(issue);
+    return null;
+  }
+
+  return value;
+}
+
+function normalizePrecision(
+  value: string | null | undefined,
+  issue: EventCandidateIssue,
+  issues: EventCandidateIssue[],
+): EventTimePrecision | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (value !== "DATE_ONLY" && value !== "DATE_TIME") {
     issues.push(issue);
     return null;
   }

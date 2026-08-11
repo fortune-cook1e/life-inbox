@@ -36,7 +36,8 @@ it("enforces the first LifeCase, ChatMessage, and Event invariants", async () =>
       `
         insert into events (case_id, updated_at)
         values ($1, '2000-01-01T00:00:00.000Z')
-        returning id, status, title, start_at, end_at, time_zone, location, version, updated_at
+        returning id, status, title, start_at, start_at_precision, end_at,
+          end_at_precision, time_zone, location, version, updated_at
       `,
       [lifeCase.id],
     );
@@ -46,11 +47,188 @@ it("enforces the first LifeCase, ChatMessage, and Event invariants", async () =>
       status: "COLLECTING",
       title: null,
       start_at: null,
+      start_at_precision: null,
       end_at: null,
+      end_at_precision: null,
       time_zone: null,
       location: null,
       version: 1,
     });
+
+    const questionMessageResult = await client.query(
+      `
+        insert into chat_messages (case_id, role, kind, content)
+        values ($1, 'ASSISTANT', 'CLARIFICATION_QUESTION', 'What time should I use?')
+        returning id
+      `,
+      [lifeCase.id],
+    );
+    const questionMessage = questionMessageResult.rows[0];
+    const pendingQuestionResult = await client.query(
+      `
+        insert into pending_questions (
+          event_id,
+          question_message_id,
+          expected_field,
+          event_version
+        )
+        values ($1, $2, 'startAt', 1)
+        returning id, status, expected_field, event_version, resolved_by_message_id, resolved_at
+      `,
+      [event.id, questionMessage.id],
+    );
+    const pendingQuestion = pendingQuestionResult.rows[0];
+
+    expect(pendingQuestion).toMatchObject({
+      status: "OPEN",
+      expected_field: "startAt",
+      event_version: 1,
+      resolved_by_message_id: null,
+      resolved_at: null,
+    });
+
+    await client.query("savepoint before_second_open_question");
+    const secondQuestionMessageResult = await client.query(
+      `
+        insert into chat_messages (case_id, role, kind, content)
+        values ($1, 'ASSISTANT', 'CLARIFICATION_QUESTION', 'Another question')
+        returning id
+      `,
+      [lifeCase.id],
+    );
+    await expect(
+      client.query(
+        `
+          insert into pending_questions (
+            event_id,
+            question_message_id,
+            expected_field,
+            event_version
+          )
+          values ($1, $2, 'title', 1)
+        `,
+        [event.id, secondQuestionMessageResult.rows[0].id],
+      ),
+    ).rejects.toMatchObject({
+      code: "23505",
+      constraint: "pending_questions_open_event_unique",
+    });
+    await client.query("rollback to savepoint before_second_open_question");
+
+    await client.query("savepoint before_invalid_pending_version");
+    await expect(
+      client.query(
+        `
+          update pending_questions
+          set event_version = 0
+          where id = $1
+        `,
+        [pendingQuestion.id],
+      ),
+    ).rejects.toMatchObject({
+      code: "23514",
+      constraint: "pending_questions_event_version_positive_check",
+    });
+    await client.query("rollback to savepoint before_invalid_pending_version");
+
+    await client.query("savepoint before_invalid_pending_resolution");
+    await expect(
+      client.query(
+        `
+          update pending_questions
+          set status = 'RESOLVED'
+          where id = $1
+        `,
+        [pendingQuestion.id],
+      ),
+    ).rejects.toMatchObject({
+      code: "23514",
+      constraint: "pending_questions_resolution_state_check",
+    });
+    await client.query("rollback to savepoint before_invalid_pending_resolution");
+
+    const answerMessageResult = await client.query(
+      `
+        insert into chat_messages (case_id, role, kind, content)
+        values ($1, 'USER', 'CLARIFICATION_ANSWER', 'At 10 AM')
+        returning id
+      `,
+      [lifeCase.id],
+    );
+
+    await client.query(
+      `
+        update pending_questions
+        set
+          status = 'RESOLVED',
+          resolved_by_message_id = $2,
+          resolved_at = now()
+        where id = $1
+      `,
+      [pendingQuestion.id, answerMessageResult.rows[0].id],
+    );
+
+    await client.query("savepoint before_duplicate_question_message");
+    const secondAnswerMessageResult = await client.query(
+      `
+        insert into chat_messages (case_id, role, kind, content)
+        values ($1, 'USER', 'CLARIFICATION_ANSWER', 'At 11 AM')
+        returning id
+      `,
+      [lifeCase.id],
+    );
+    await expect(
+      client.query(
+        `
+          insert into pending_questions (
+            event_id,
+            question_message_id,
+            expected_field,
+            status,
+            event_version,
+            resolved_by_message_id,
+            resolved_at
+          )
+          values ($1, $2, 'startAt', 'RESOLVED', 1, $3, now())
+        `,
+        [event.id, questionMessage.id, secondAnswerMessageResult.rows[0].id],
+      ),
+    ).rejects.toMatchObject({
+      code: "23505",
+      constraint: "pending_questions_question_message_id_unique",
+    });
+    await client.query("rollback to savepoint before_duplicate_question_message");
+
+    await client.query("savepoint before_duplicate_resolved_message");
+    const thirdQuestionMessageResult = await client.query(
+      `
+        insert into chat_messages (case_id, role, kind, content)
+        values ($1, 'ASSISTANT', 'CLARIFICATION_QUESTION', 'Third question')
+        returning id
+      `,
+      [lifeCase.id],
+    );
+    await expect(
+      client.query(
+        `
+          insert into pending_questions (
+            event_id,
+            question_message_id,
+            expected_field,
+            status,
+            event_version,
+            resolved_by_message_id,
+            resolved_at
+          )
+          values ($1, $2, 'startAt', 'RESOLVED', 1, $3, now())
+        `,
+        [event.id, thirdQuestionMessageResult.rows[0].id, answerMessageResult.rows[0].id],
+      ),
+    ).rejects.toMatchObject({
+      code: "23505",
+      constraint: "pending_questions_resolved_by_message_id_unique",
+    });
+    await client.query("rollback to savepoint before_duplicate_resolved_message");
 
     await client.query("savepoint before_second_case_event");
     await expect(
@@ -83,6 +261,22 @@ it("enforces the first LifeCase, ChatMessage, and Event invariants", async () =>
     });
     await client.query("rollback to savepoint before_incomplete_ready_event");
 
+    await client.query("savepoint before_start_without_precision");
+    await expect(
+      client.query(
+        `
+          update events
+          set start_at = '2026-08-01T17:00:00.000Z'
+          where id = $1
+        `,
+        [event.id],
+      ),
+    ).rejects.toMatchObject({
+      code: "23514",
+      constraint: "events_start_at_precision_check",
+    });
+    await client.query("rollback to savepoint before_start_without_precision");
+
     for (const invalidUpdate of [
       {
         name: "blank title",
@@ -110,7 +304,9 @@ it("enforces the first LifeCase, ChatMessage, and Event invariants", async () =>
           update events
           set
             start_at = '2026-08-01T17:00:00.000Z',
-            end_at = '2026-08-01T17:00:00.000Z'
+            start_at_precision = 'DATE_TIME',
+            end_at = '2026-08-01T17:00:00.000Z',
+            end_at_precision = 'DATE_TIME'
           where id = $1
         `,
         constraint: "events_time_range_check",
@@ -131,7 +327,9 @@ it("enforces the first LifeCase, ChatMessage, and Event invariants", async () =>
         status: "READY",
         title: "Do the laundry",
         startAt: new Date("2026-08-01T17:00:00.000Z"),
+        startAtPrecision: "DATE_TIME",
         endAt: new Date("2026-08-01T18:00:00.000Z"),
+        endAtPrecision: "DATE_TIME",
         timeZone: "Europe/Stockholm",
         location: "Laundry room",
       })

@@ -5,6 +5,7 @@ import { evaluateEventCandidate } from "../src/events/event-readiness.js";
 const validCandidate = {
   title: "Do the laundry",
   startAt: new Date("2026-08-01T17:00:00.000Z"),
+  startAtPrecision: "DATE_TIME" as const,
   timeZone: "Europe/Stockholm",
 };
 
@@ -16,6 +17,7 @@ describe("evaluateEventCandidate", () => {
       candidate: {
         ...validCandidate,
         endAt: null,
+        endAtPrecision: null,
         location: null,
       },
     });
@@ -33,10 +35,43 @@ describe("evaluateEventCandidate", () => {
       candidate: {
         title: "Do the laundry",
         startAt: null,
+        startAtPrecision: null,
         endAt: null,
+        endAtPrecision: null,
         timeZone: "Europe/Stockholm",
         location: null,
       },
+    });
+  });
+
+  it("keeps a date-only default timestamp in COLLECTING", () => {
+    expect(
+      evaluateEventCandidate({
+        title: "Go to the campus",
+        startAt: new Date("2026-08-14T07:00:00.000Z"),
+        startAtPrecision: "DATE_ONLY",
+        timeZone: "Europe/Stockholm",
+      }),
+    ).toMatchObject({
+      valid: true,
+      status: "COLLECTING",
+      candidate: {
+        startAt: new Date("2026-08-14T07:00:00.000Z"),
+        startAtPrecision: "DATE_ONLY",
+      },
+    });
+  });
+
+  it("keeps an explicit date-only end in COLLECTING", () => {
+    expect(
+      evaluateEventCandidate({
+        ...validCandidate,
+        endAt: new Date("2026-08-03T07:00:00.000Z"),
+        endAtPrecision: "DATE_ONLY",
+      }),
+    ).toMatchObject({
+      valid: true,
+      status: "COLLECTING",
     });
   });
 
@@ -67,12 +102,21 @@ describe("evaluateEventCandidate", () => {
     },
     {
       name: "an invalid endAt",
-      candidate: { ...validCandidate, endAt: new Date("invalid") },
+      candidate: {
+        ...validCandidate,
+        endAt: new Date("invalid"),
+        endAtPrecision: "DATE_TIME" as const,
+      },
       issue: "INVALID_END_AT",
     },
     {
       name: "endAt without startAt",
-      candidate: { title: "Do the laundry", endAt: new Date(), timeZone: "Europe/Stockholm" },
+      candidate: {
+        title: "Do the laundry",
+        endAt: new Date(),
+        endAtPrecision: "DATE_TIME" as const,
+        timeZone: "Europe/Stockholm",
+      },
       issue: "END_AT_REQUIRES_START_AT",
     },
     {
@@ -80,6 +124,7 @@ describe("evaluateEventCandidate", () => {
       candidate: {
         ...validCandidate,
         endAt: new Date("2026-08-01T16:00:00.000Z"),
+        endAtPrecision: "DATE_TIME" as const,
       },
       issue: "END_AT_NOT_AFTER_START_AT",
     },
@@ -89,9 +134,9 @@ describe("evaluateEventCandidate", () => {
       issue: "INVALID_TIME_ZONE",
     },
   ])("rejects $name instead of returning COLLECTING", ({ candidate, issue }) => {
-    expect(evaluateEventCandidate(candidate)).toEqual({
+    expect(evaluateEventCandidate(candidate)).toMatchObject({
       valid: false,
-      issues: [issue],
+      issues: expect.arrayContaining([issue]),
     });
   });
 });

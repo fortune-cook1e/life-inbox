@@ -29,7 +29,7 @@ export function createAgentLanguageModel(): AgentLanguageModelConfig {
     providerOptions: {
       openai: {
         parallelToolCalls: false,
-        reasoningEffort: "minimal",
+        reasoningEffort: "low",
         reasoningSummary: null,
         store: false,
       } satisfies OpenAILanguageModelResponsesOptions,

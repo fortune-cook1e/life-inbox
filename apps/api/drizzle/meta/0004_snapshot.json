@@ -1,0 +1,658 @@
+{
+  "id": "d2cfc5af-f5cc-4b16-8e85-eff712e71101",
+  "prevId": "a27063cf-5f2b-4bbd-b693-e05f4459d796",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.chat_messages": {
+      "name": "chat_messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "case_id": {
+          "name": "case_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "chat_message_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "chat_message_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_message_id": {
+          "name": "client_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "chat_messages_client_message_id_unique": {
+          "name": "chat_messages_client_message_id_unique",
+          "columns": [
+            {
+              "expression": "client_message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "chat_messages_timeline_idx": {
+          "name": "chat_messages_timeline_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "chat_messages_case_timeline_idx": {
+          "name": "chat_messages_case_timeline_idx",
+          "columns": [
+            {
+              "expression": "case_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "chat_messages_case_id_life_cases_id_fk": {
+          "name": "chat_messages_case_id_life_cases_id_fk",
+          "tableFrom": "chat_messages",
+          "tableTo": "life_cases",
+          "columnsFrom": [
+            "case_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "chat_messages_content_not_blank_check": {
+          "name": "chat_messages_content_not_blank_check",
+          "value": "length(btrim(\"chat_messages\".\"content\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.events": {
+      "name": "events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "case_id": {
+          "name": "case_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "event_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'COLLECTING'"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_at": {
+          "name": "start_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_at_precision": {
+          "name": "start_at_precision",
+          "type": "event_time_precision",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_at": {
+          "name": "end_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_at_precision": {
+          "name": "end_at_precision",
+          "type": "event_time_precision",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "events_case_id_unique": {
+          "name": "events_case_id_unique",
+          "columns": [
+            {
+              "expression": "case_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "events_case_id_life_cases_id_fk": {
+          "name": "events_case_id_life_cases_id_fk",
+          "tableFrom": "events",
+          "tableTo": "life_cases",
+          "columnsFrom": [
+            "case_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "events_title_not_blank_check": {
+          "name": "events_title_not_blank_check",
+          "value": "\"events\".\"title\" IS NULL OR length(btrim(\"events\".\"title\")) > 0"
+        },
+        "events_time_zone_not_blank_check": {
+          "name": "events_time_zone_not_blank_check",
+          "value": "\"events\".\"time_zone\" IS NULL OR length(btrim(\"events\".\"time_zone\")) > 0"
+        },
+        "events_location_not_blank_check": {
+          "name": "events_location_not_blank_check",
+          "value": "\"events\".\"location\" IS NULL OR length(btrim(\"events\".\"location\")) > 0"
+        },
+        "events_time_range_check": {
+          "name": "events_time_range_check",
+          "value": "\"events\".\"end_at\" IS NULL\n        OR (\"events\".\"start_at\" IS NOT NULL AND \"events\".\"end_at\" > \"events\".\"start_at\")"
+        },
+        "events_start_at_precision_check": {
+          "name": "events_start_at_precision_check",
+          "value": "(\"events\".\"start_at\" IS NULL AND \"events\".\"start_at_precision\" IS NULL)\n        OR (\"events\".\"start_at\" IS NOT NULL AND \"events\".\"start_at_precision\" IS NOT NULL)"
+        },
+        "events_end_at_precision_check": {
+          "name": "events_end_at_precision_check",
+          "value": "(\"events\".\"end_at\" IS NULL AND \"events\".\"end_at_precision\" IS NULL)\n        OR (\"events\".\"end_at\" IS NOT NULL AND \"events\".\"end_at_precision\" IS NOT NULL)"
+        },
+        "events_version_positive_check": {
+          "name": "events_version_positive_check",
+          "value": "\"events\".\"version\" > 0"
+        },
+        "events_ready_fields_check": {
+          "name": "events_ready_fields_check",
+          "value": "\"events\".\"status\" = 'COLLECTING'\n        OR (\n          \"events\".\"title\" IS NOT NULL\n          AND \"events\".\"start_at\" IS NOT NULL\n          AND \"events\".\"start_at_precision\" = 'DATE_TIME'\n          AND (\"events\".\"end_at\" IS NULL OR \"events\".\"end_at_precision\" = 'DATE_TIME')\n          AND \"events\".\"time_zone\" IS NOT NULL\n        )"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.life_cases": {
+      "name": "life_cases",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "status": {
+          "name": "status",
+          "type": "life_case_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'OPEN'"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "life_case_resolution",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "life_cases_status_resolution_check": {
+          "name": "life_cases_status_resolution_check",
+          "value": "(\"life_cases\".\"status\" = 'OPEN' AND \"life_cases\".\"resolution\" IS NULL)\n        OR (\"life_cases\".\"status\" = 'CLOSED' AND \"life_cases\".\"resolution\" IS NOT NULL)"
+        },
+        "life_cases_version_positive_check": {
+          "name": "life_cases_version_positive_check",
+          "value": "\"life_cases\".\"version\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.pending_questions": {
+      "name": "pending_questions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_message_id": {
+          "name": "question_message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_field": {
+          "name": "expected_field",
+          "type": "pending_question_field",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "pending_question_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'OPEN'"
+        },
+        "event_version": {
+          "name": "event_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resolved_by_message_id": {
+          "name": "resolved_by_message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "pending_questions_open_event_unique": {
+          "name": "pending_questions_open_event_unique",
+          "columns": [
+            {
+              "expression": "event_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"pending_questions\".\"status\" = 'OPEN'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "pending_questions_question_message_id_unique": {
+          "name": "pending_questions_question_message_id_unique",
+          "columns": [
+            {
+              "expression": "question_message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "pending_questions_resolved_by_message_id_unique": {
+          "name": "pending_questions_resolved_by_message_id_unique",
+          "columns": [
+            {
+              "expression": "resolved_by_message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "pending_questions_open_created_idx": {
+          "name": "pending_questions_open_created_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"pending_questions\".\"status\" = 'OPEN'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "pending_questions_event_id_events_id_fk": {
+          "name": "pending_questions_event_id_events_id_fk",
+          "tableFrom": "pending_questions",
+          "tableTo": "events",
+          "columnsFrom": [
+            "event_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "pending_questions_question_message_id_chat_messages_id_fk": {
+          "name": "pending_questions_question_message_id_chat_messages_id_fk",
+          "tableFrom": "pending_questions",
+          "tableTo": "chat_messages",
+          "columnsFrom": [
+            "question_message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "pending_questions_resolved_by_message_id_chat_messages_id_fk": {
+          "name": "pending_questions_resolved_by_message_id_chat_messages_id_fk",
+          "tableFrom": "pending_questions",
+          "tableTo": "chat_messages",
+          "columnsFrom": [
+            "resolved_by_message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "pending_questions_event_version_positive_check": {
+          "name": "pending_questions_event_version_positive_check",
+          "value": "\"pending_questions\".\"event_version\" > 0"
+        },
+        "pending_questions_resolution_state_check": {
+          "name": "pending_questions_resolution_state_check",
+          "value": "(\"pending_questions\".\"status\" = 'OPEN'\n          AND \"pending_questions\".\"resolved_by_message_id\" IS NULL\n          AND \"pending_questions\".\"resolved_at\" IS NULL)\n        OR (\"pending_questions\".\"status\" = 'RESOLVED'\n          AND \"pending_questions\".\"resolved_by_message_id\" IS NOT NULL\n          AND \"pending_questions\".\"resolved_at\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.chat_message_kind": {
+      "name": "chat_message_kind",
+      "schema": "public",
+      "values": [
+        "USER_TEXT",
+        "SOURCE_SUBMITTED",
+        "CLARIFICATION_QUESTION",
+        "CLARIFICATION_ANSWER",
+        "EVENT_EDIT",
+        "DRAFT_PROGRESS",
+        "EVENT_PREVIEW",
+        "EVENT_CONFIRMED",
+        "EVENT_UPDATE_PREVIEW",
+        "EVENT_CANCELLATION_PREVIEW",
+        "EVENT_QUERY_RESULT",
+        "STATUS"
+      ]
+    },
+    "public.chat_message_role": {
+      "name": "chat_message_role",
+      "schema": "public",
+      "values": [
+        "USER",
+        "ASSISTANT",
+        "SYSTEM"
+      ]
+    },
+    "public.event_status": {
+      "name": "event_status",
+      "schema": "public",
+      "values": [
+        "COLLECTING",
+        "READY"
+      ]
+    },
+    "public.event_time_precision": {
+      "name": "event_time_precision",
+      "schema": "public",
+      "values": [
+        "DATE_ONLY",
+        "DATE_TIME"
+      ]
+    },
+    "public.life_case_resolution": {
+      "name": "life_case_resolution",
+      "schema": "public",
+      "values": [
+        "EVENT_CONFIRMED",
+        "EVENT_IGNORED",
+        "NO_ACTION",
+        "EVENT_CANCELLED"
+      ]
+    },
+    "public.life_case_status": {
+      "name": "life_case_status",
+      "schema": "public",
+      "values": [
+        "OPEN",
+        "CLOSED"
+      ]
+    },
+    "public.pending_question_field": {
+      "name": "pending_question_field",
+      "schema": "public",
+      "values": [
+        "title",
+        "startAt",
+        "endAt",
+        "timeZone"
+      ]
+    },
+    "public.pending_question_status": {
+      "name": "pending_question_status",
+      "schema": "public",
+      "values": [
+        "OPEN",
+        "RESOLVED"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -28,16 +28,18 @@ export class MessagesController {
 
   @Post()
   async createMessage(@Body() input: CreateMessageDto) {
-    const { assistantMessage, chatMessage, event } = await this.agentRunService.processTextMessage({
-      clientMessageId: input.clientMessageId,
-      content: input.content,
-      timeZone: input.timeZone,
-    });
+    const { outcome, assistantMessage, chatMessage, event } =
+      await this.agentRunService.processTextMessage({
+        clientMessageId: input.clientMessageId,
+        content: input.content,
+        timeZone: input.timeZone,
+      });
 
     return {
+      outcome,
       message: toMessageResponse(chatMessage),
-      assistantMessage: toMessageResponse(assistantMessage),
-      event: toEventResponse(event),
+      assistantMessage: assistantMessage ? toMessageResponse(assistantMessage) : null,
+      event: event ? toEventResponse(event) : null,
     };
   }
 }

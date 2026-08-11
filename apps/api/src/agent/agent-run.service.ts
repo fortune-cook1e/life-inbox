@@ -4,6 +4,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 
 import { getDefaultTimeZone } from "../config/app-config.js";
 import { DatabaseService } from "../database/database.service.js";
@@ -38,8 +39,19 @@ export class AgentRunService {
 
       this.logger.debug(`Agent completed in ${outcome.stepCount} steps.`);
 
+      const [reloadedMessage] = await this.databaseService.db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.id, chatMessage.id))
+        .limit(1);
+
+      if (!reloadedMessage) {
+        throw new Error("The input ChatMessage could not be reloaded after the Agent run.");
+      }
+
       return {
-        chatMessage,
+        outcome: outcome.outcome,
+        chatMessage: reloadedMessage,
         assistantMessage: outcome.assistantMessage,
         event: outcome.event,
       };

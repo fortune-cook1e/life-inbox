@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { DatabaseService } from "../database/database.service.js";
-import { chatMessages, events, lifeCases } from "../database/schema.js";
+import { chatMessages, events, lifeCases, pendingQuestions } from "../database/schema.js";
 
 @Injectable()
 export class CasesService {
@@ -19,6 +19,20 @@ export class CasesService {
 
       if (!lifeCase) {
         throw new NotFoundException(`Case ${caseId} was not found.`);
+      }
+
+      const caseEvents = await transaction
+        .select({ id: events.id })
+        .from(events)
+        .where(eq(events.caseId, caseId));
+
+      if (caseEvents.length > 0) {
+        await transaction.delete(pendingQuestions).where(
+          inArray(
+            pendingQuestions.eventId,
+            caseEvents.map((event) => event.id),
+          ),
+        );
       }
 
       await transaction.delete(chatMessages).where(eq(chatMessages.caseId, caseId));

@@ -51,11 +51,13 @@ it("DELETE /cases/:caseId deletes the Case and all related Messages and Events",
       cases: 0,
       messages: 0,
       events: 0,
+      pendingQuestions: 0,
     });
     await expect(countCaseGraph(otherCaseId)).resolves.toEqual({
       cases: 1,
       messages: 2,
       events: 1,
+      pendingQuestions: 1,
     });
   } finally {
     await cleanupCase(targetCaseId);
@@ -82,6 +84,7 @@ it("DELETE /cases/:caseId returns 404 without deleting other data", async () => 
       cases: 1,
       messages: 2,
       events: 1,
+      pendingQuestions: 1,
     });
   } finally {
     await cleanupCase(existingCaseId);
@@ -96,21 +99,38 @@ async function seedCase(caseId: string, label: string) {
     `,
     [caseId],
   );
-  await databaseClient.query(
+  const messagesResult = await databaseClient.query(
     `
       insert into chat_messages (case_id, role, kind, content)
       values
         ($1, 'USER', 'USER_TEXT', $2),
-        ($1, 'ASSISTANT', 'EVENT_PREVIEW', $3)
+        ($1, 'ASSISTANT', 'CLARIFICATION_QUESTION', $3)
+      returning id, kind
     `,
     [caseId, `${label} user message`, `${label} assistant message`],
   );
-  await databaseClient.query(
+  const questionMessage = messagesResult.rows.find(
+    (message) => message.kind === "CLARIFICATION_QUESTION",
+  );
+  const eventResult = await databaseClient.query(
     `
-      insert into events (case_id, status, title, start_at, time_zone)
-      values ($1, 'READY', $2, '2026-08-07T08:00:00.000Z', 'Europe/Stockholm')
+      insert into events (case_id, status, title, time_zone)
+      values ($1, 'COLLECTING', $2, 'Europe/Stockholm')
+      returning id, version
     `,
     [caseId, `${label} event`],
+  );
+  await databaseClient.query(
+    `
+      insert into pending_questions (
+        event_id,
+        question_message_id,
+        expected_field,
+        event_version
+      )
+      values ($1, $2, 'startAt', $3)
+    `,
+    [eventResult.rows[0].id, questionMessage.id, eventResult.rows[0].version],
   );
 }
 
@@ -120,7 +140,12 @@ async function countCaseGraph(caseId: string) {
       select
         (select count(*)::integer from life_cases where id = $1) as cases,
         (select count(*)::integer from chat_messages where case_id = $1) as messages,
-        (select count(*)::integer from events where case_id = $1) as events
+        (select count(*)::integer from events where case_id = $1) as events,
+        (
+          select count(*)::integer
+          from pending_questions
+          where event_id in (select id from events where case_id = $1)
+        ) as "pendingQuestions"
     `,
     [caseId],
   );
@@ -129,10 +154,18 @@ async function countCaseGraph(caseId: string) {
     cases: number;
     messages: number;
     events: number;
+    pendingQuestions: number;
   };
 }
 
 async function cleanupCase(caseId: string) {
+  await databaseClient.query(
+    `
+      delete from pending_questions
+      where event_id in (select id from events where case_id = $1)
+    `,
+    [caseId],
+  );
   await databaseClient.query("delete from chat_messages where case_id = $1", [caseId]);
   await databaseClient.query("delete from events where case_id = $1", [caseId]);
   await databaseClient.query("delete from life_cases where id = $1", [caseId]);
