@@ -1,4 +1,6 @@
-import { BadRequestException } from "@nestjs/common";
+import { HttpStatus } from "@nestjs/common";
+
+import { PublicApiException } from "../common/http/public-api.exception.js";
 
 interface MessageCursorSource {
   id: string;
@@ -38,7 +40,7 @@ export function decodeMessageCursor(cursor: string): MessageCursor {
       createdAt,
     };
   } catch {
-    throw new BadRequestException("Invalid message cursor.");
+    throw new PublicApiException("Invalid message cursor.", HttpStatus.BAD_REQUEST);
   }
 }
 

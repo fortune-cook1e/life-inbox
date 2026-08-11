@@ -1,15 +1,11 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from "@nestjs/common";
+import { HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 
 import { getDefaultTimeZone } from "../config/app-config.js";
+import { PublicApiException } from "../common/http/public-api.exception.js";
 import { DatabaseService } from "../database/database.service.js";
 import { chatMessages } from "../database/schema.js";
-import { AgentRunDidNotFinishError, LifeInboxAgentService } from "./life-inbox-agent.service.js";
+import { LifeInboxAgentService } from "./life-inbox-agent.service.js";
 
 export interface ProcessTextMessageInput {
   clientMessageId: string;
@@ -58,15 +54,10 @@ export class AgentRunService {
     } catch (error) {
       this.logger.error("Agent run failed.", error instanceof Error ? error.stack : undefined);
 
-      const code =
-        error instanceof AgentRunDidNotFinishError
-          ? "AGENT_STEP_LIMIT_REACHED"
-          : "AGENT_UNAVAILABLE";
-
-      throw new ServiceUnavailableException({
-        code,
-        message: "Your message was saved, but the Agent could not finish processing it.",
-      });
+      throw new PublicApiException(
+        "Your message was saved, but the Agent could not finish processing it.",
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
   }
 
@@ -75,11 +66,11 @@ export class AgentRunService {
     const content = input.content.trim();
 
     if (!clientMessageId) {
-      throw new BadRequestException("clientMessageId must not be blank.");
+      throw new PublicApiException("clientMessageId must not be blank.", HttpStatus.BAD_REQUEST);
     }
 
     if (!content) {
-      throw new BadRequestException("content must not be blank.");
+      throw new PublicApiException("content must not be blank.", HttpStatus.BAD_REQUEST);
     }
 
     const [chatMessage] = await this.databaseService.db

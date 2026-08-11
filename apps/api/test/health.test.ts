@@ -75,6 +75,7 @@ describe("health endpoints", () => {
     const readyResponse = await fetch(`${baseUrl}/health/ready`);
 
     expect(liveResponse.status).toBe(200);
+    expect(liveResponse.headers.get("x-request-id")).toEqual(expect.any(String));
     await expect(liveResponse.json()).resolves.toEqual({
       status: "ok",
       service: "life-inbox-api",
@@ -84,6 +85,7 @@ describe("health endpoints", () => {
     });
 
     expect(readyResponse.status).toBe(200);
+    expect(readyResponse.headers.get("x-request-id")).toEqual(expect.any(String));
     await expect(readyResponse.json()).resolves.toEqual({
       status: "ok",
       service: "life-inbox-api",

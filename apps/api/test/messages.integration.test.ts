@@ -12,6 +12,7 @@ import { AppModule } from "../src/app.module.js";
 import { AGENT_LANGUAGE_MODEL } from "../src/agent/agent.constants.js";
 import type { AgentLanguageModelFactory } from "../src/agent/agent-model.provider.js";
 import { AgentToolsService } from "../src/agent/agent-tools.service.js";
+import { readErrorResponse, readSuccessData } from "./api-response.helpers.js";
 
 let app: INestApplication;
 let baseUrl: string;
@@ -303,7 +304,7 @@ it("POST /messages creates one Message, Case, Event, and preview", async () => {
       clientMessageId,
       content,
     });
-    const body = (await response.json()) as MessageResponse;
+    const body = await readSuccessData<MessageResponse>(response);
 
     expect(response.status).toBe(201);
     expect(body).toEqual({
@@ -373,7 +374,7 @@ it.each([
       toolCallSequence = [];
       const before = await countRows(databaseClient);
       const response = await postMessage({ clientMessageId, content });
-      const body = (await response.json()) as MessageResponse;
+      const body = await readSuccessData<MessageResponse>(response);
 
       expect(response.status).toBe(201);
       expect(body.assistantMessage.kind).toBe("EVENT_PREVIEW");
@@ -403,7 +404,7 @@ it("POST /messages derives a title from a clear user action", async () => {
       clientMessageId,
       content,
     });
-    const body = (await response.json()) as MessageResponse;
+    const body = await readSuccessData<MessageResponse>(response);
 
     expect(response.status).toBe(201);
     expect(body.outcome).toBe("EVENT_PREVIEW");
@@ -460,7 +461,7 @@ it("POST /messages stores next Friday at the default time while still asking for
       content,
       timeZone: "Europe/Stockholm",
     });
-    const body = (await response.json()) as MessageResponse;
+    const body = await readSuccessData<MessageResponse>(response);
 
     expect(response.status).toBe(201);
     expect(body.outcome).toBe("CLARIFICATION_QUESTION");
@@ -500,7 +501,7 @@ it("POST /messages creates a new matter when the Agent first selects an unrelate
       content: "Remind me to go to the campus next Friday",
       timeZone: "Europe/Stockholm",
     });
-    const campusBody = (await campusResponse.json()) as MessageResponse;
+    const campusBody = await readSuccessData<MessageResponse>(campusResponse);
 
     expect(campusResponse.status).toBe(201);
     expect(campusBody.event).toMatchObject({
@@ -515,7 +516,7 @@ it("POST /messages creates a new matter when the Agent first selects an unrelate
       content: "Remind me to call the dentist on August 22, 2026.",
       timeZone: "Europe/Stockholm",
     });
-    const dentistBody = (await dentistResponse.json()) as MessageResponse;
+    const dentistBody = await readSuccessData<MessageResponse>(dentistResponse);
 
     expect(dentistResponse.status).toBe(201);
     expect(dentistBody.outcome).toBe("CLARIFICATION_QUESTION");
@@ -577,7 +578,7 @@ it("POST /messages keeps collecting when a startAt clarification supplies only a
       content: "Remind me to go to the campus next Friday",
       timeZone: "Europe/Stockholm",
     });
-    const initialBody = (await initialResponse.json()) as MessageResponse;
+    const initialBody = await readSuccessData<MessageResponse>(initialResponse);
     const beforeAnswer = await countRows(databaseClient);
 
     toolCallSequence = [];
@@ -586,7 +587,7 @@ it("POST /messages keeps collecting when a startAt clarification supplies only a
       content: "August 10th",
       timeZone: "Europe/Stockholm",
     });
-    const answerBody = (await answerResponse.json()) as MessageResponse;
+    const answerBody = await readSuccessData<MessageResponse>(answerResponse);
 
     expect(answerResponse.status).toBe(201);
     expect(answerBody.outcome).toBe("CLARIFICATION_QUESTION");
@@ -628,7 +629,7 @@ it("POST /messages creates a collecting Event and asks one clarification questio
       clientMessageId,
       content,
     });
-    const body = (await response.json()) as MessageResponse;
+    const body = await readSuccessData<MessageResponse>(response);
 
     expect(response.status).toBe(201);
     expect(body.outcome).toBe("CLARIFICATION_QUESTION");
@@ -692,7 +693,7 @@ it("POST /messages applies one compatible clarification answer to the original E
       clientMessageId: initialMessageId,
       content: "Remind me to visit the dentist next Friday.",
     });
-    const initialBody = (await initialResponse.json()) as MessageResponse;
+    const initialBody = await readSuccessData<MessageResponse>(initialResponse);
     const candidateResult = await databaseClient.query(
       `
         select
@@ -713,7 +714,7 @@ it("POST /messages applies one compatible clarification answer to the original E
       clientMessageId: answerMessageId,
       content: "Use this time: 10 AM.",
     });
-    const answerBody = (await answerResponse.json()) as MessageResponse;
+    const answerBody = await readSuccessData<MessageResponse>(answerResponse);
 
     expect(answerResponse.status).toBe(201);
     expect(answerBody.outcome).toBe("EVENT_PREVIEW");
@@ -782,14 +783,14 @@ it("POST /messages opens the next required question when an answer is still inco
       clientMessageId: initialMessageId,
       content: "Something happens next Friday.",
     });
-    const initialBody = (await initialResponse.json()) as MessageResponse;
+    const initialBody = await readSuccessData<MessageResponse>(initialResponse);
 
     toolCallSequence = [];
     const answerResponse = await postMessage({
       clientMessageId: answerMessageId,
       content: "Use this time: 10 AM.",
     });
-    const answerBody = (await answerResponse.json()) as MessageResponse;
+    const answerBody = await readSuccessData<MessageResponse>(answerResponse);
 
     expect(answerResponse.status).toBe(201);
     expect(answerBody.outcome).toBe("CLARIFICATION_QUESTION");
@@ -846,12 +847,12 @@ it("POST /messages requests a restatement when two pending matters match a fragm
       clientMessageId: dentistMessageId,
       content: "Remind me to visit the dentist next Friday.",
     });
-    const dentistBody = (await dentistResponse.json()) as MessageResponse;
+    const dentistBody = await readSuccessData<MessageResponse>(dentistResponse);
     const laundryResponse = await postMessage({
       clientMessageId: laundryMessageId,
       content: "Remind me to book the laundry room.",
     });
-    const laundryBody = (await laundryResponse.json()) as MessageResponse;
+    const laundryBody = await readSuccessData<MessageResponse>(laundryResponse);
     const beforeAnswer = await countRows(databaseClient);
 
     toolCallSequence = [];
@@ -859,7 +860,7 @@ it("POST /messages requests a restatement when two pending matters match a fragm
       clientMessageId: answerMessageId,
       content: "Use this time: 10 AM.",
     });
-    const answerBody = (await answerResponse.json()) as NullableMessageResponse;
+    const answerBody = await readSuccessData<NullableMessageResponse>(answerResponse);
     detachedAssistantMessageId = answerBody.assistantMessage?.id;
 
     expect(answerResponse.status).toBe(201);
@@ -911,12 +912,12 @@ it("POST /messages uses a self-contained restatement to update only the identifi
       clientMessageId: dentistMessageId,
       content: "Remind me to visit the dentist next Friday.",
     });
-    const dentistBody = (await dentistResponse.json()) as MessageResponse;
+    const dentistBody = await readSuccessData<MessageResponse>(dentistResponse);
     const laundryResponse = await postMessage({
       clientMessageId: laundryMessageId,
       content: "Remind me to book the laundry room.",
     });
-    const laundryBody = (await laundryResponse.json()) as MessageResponse;
+    const laundryBody = await readSuccessData<MessageResponse>(laundryResponse);
 
     await databaseClient.query(
       `
@@ -935,7 +936,7 @@ it("POST /messages uses a self-contained restatement to update only the identifi
       clientMessageId: answerMessageId,
       content: "Dentist at 10 AM.",
     });
-    const answerBody = (await answerResponse.json()) as MessageResponse;
+    const answerBody = await readSuccessData<MessageResponse>(answerResponse);
 
     expect(answerResponse.status).toBe(201);
     expect(answerBody.outcome).toBe("EVENT_PREVIEW");
@@ -976,7 +977,7 @@ it("POST /messages requests context for an unmatched meaningful fragment", async
       clientMessageId,
       content: "Use this time: 10 AM.",
     });
-    const body = (await response.json()) as NullableMessageResponse;
+    const body = await readSuccessData<NullableMessageResponse>(response);
     detachedAssistantMessageId = body.assistantMessage?.id;
 
     expect(response.status).toBe(201);
@@ -1011,7 +1012,7 @@ it("POST /messages stores noise as MESSAGE_ONLY", async () => {
       clientMessageId,
       content: "Thanks, that's all.",
     });
-    const body = (await response.json()) as NullableMessageResponse;
+    const body = await readSuccessData<NullableMessageResponse>(response);
 
     expect(response.status).toBe(201);
     expect(body).toMatchObject({
@@ -1044,7 +1045,7 @@ it("allows only one concurrent answer to resolve a PendingQuestion", async () =>
       clientMessageId: initialMessageId,
       content: "Remind me to visit the dentist next Friday.",
     });
-    const initialBody = (await initialResponse.json()) as MessageResponse;
+    const initialBody = await readSuccessData<MessageResponse>(initialResponse);
     const targetResult = await databaseClient.query(
       `
         select
@@ -1147,7 +1148,7 @@ it("POST /messages lets the Agent recover when preview is rejected by backend va
       clientMessageId,
       content: "Book the laundry room next Tuesday. Agent previews too early.",
     });
-    const body = (await response.json()) as MessageResponse;
+    const body = await readSuccessData<MessageResponse>(response);
 
     expect(response.status).toBe(201);
     expect(body.event.status).toBe("COLLECTING");
@@ -1172,7 +1173,7 @@ it("POST /messages prefers the caller's IANA time zone", async () => {
       content: "Remind me to book the laundry room next Tuesday at 10 AM.",
       timeZone: "Asia/Shanghai",
     });
-    const body = (await response.json()) as MessageResponse;
+    const body = await readSuccessData<MessageResponse>(response);
 
     expect(response.status).toBe(201);
     expect(body.event.timeZone).toBe("Asia/Shanghai");
@@ -1193,9 +1194,10 @@ it("POST /messages preserves the user evidence when the Agent provider fails", a
     });
 
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      code: "AGENT_UNAVAILABLE",
+    await expect(readErrorResponse(response)).resolves.toEqual({
+      code: 2,
       message: "Your message was saved, but the Agent could not finish processing it.",
+      data: null,
     });
 
     const after = await countRows(databaseClient);
@@ -1220,8 +1222,10 @@ it("POST /messages stops after four steps when the Agent keeps proposing invalid
     });
 
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      code: "AGENT_STEP_LIMIT_REACHED",
+    await expect(readErrorResponse(response)).resolves.toEqual({
+      code: 2,
+      message: "Your message was saved, but the Agent could not finish processing it.",
+      data: null,
     });
 
     const after = await countRows(databaseClient);
@@ -1271,6 +1275,7 @@ it.each([
   const response = await postMessage(body);
 
   expect(response.status).toBe(400);
+  await readErrorResponse(response);
   expect(await countRows(databaseClient)).toEqual(before);
 });
 
@@ -1300,7 +1305,7 @@ it("GET /messages returns the latest page in stable chronological order", async 
     );
 
     const latestPageResponse = await fetch(`${baseUrl}/messages?limit=2`);
-    const latestPage = (await latestPageResponse.json()) as MessagesPageResponse;
+    const latestPage = await readSuccessData<MessagesPageResponse>(latestPageResponse);
 
     expect(latestPageResponse.status).toBe(200);
     expect(latestPage.items.map((message) => message.id)).toEqual([messageIds[1], messageIds[2]]);
@@ -1312,7 +1317,7 @@ it("GET /messages returns the latest page in stable chronological order", async 
     const olderPageResponse = await fetch(
       `${baseUrl}/messages?limit=2&cursor=${encodeURIComponent(latestPage.pageInfo.nextCursor!)}`,
     );
-    const olderPage = (await olderPageResponse.json()) as MessagesPageResponse;
+    const olderPage = await readSuccessData<MessagesPageResponse>(olderPageResponse);
 
     expect(olderPageResponse.status).toBe(200);
     expect(
@@ -1322,7 +1327,7 @@ it("GET /messages returns the latest page in stable chronological order", async 
     expect(olderPage.items.map((message) => message.id)).not.toContain(messageIds[2]);
 
     const completePageResponse = await fetch(`${baseUrl}/messages?limit=3`);
-    const completePage = (await completePageResponse.json()) as MessagesPageResponse;
+    const completePage = await readSuccessData<MessagesPageResponse>(completePageResponse);
 
     expect(completePageResponse.status).toBe(200);
     expect(completePage.items.map((message) => message.id)).toEqual(messageIds);
@@ -1348,7 +1353,7 @@ it("GET /messages returns the latest page in stable chronological order", async 
     const exhaustedPageResponse = await fetch(
       `${baseUrl}/messages?cursor=${encodeURIComponent(exhaustedCursor)}`,
     );
-    const exhaustedPage = (await exhaustedPageResponse.json()) as MessagesPageResponse;
+    const exhaustedPage = await readSuccessData<MessagesPageResponse>(exhaustedPageResponse);
 
     expect(exhaustedPageResponse.status).toBe(200);
     expect(exhaustedPage).toEqual({
@@ -1373,12 +1378,14 @@ it.each(["0", "101", "not-a-number"])("GET /messages rejects limit=%s", async (l
   const response = await fetch(`${baseUrl}/messages?limit=${limit}`);
 
   expect(response.status).toBe(400);
+  await readErrorResponse(response);
 });
 
 it("GET /messages rejects an invalid cursor", async () => {
   const response = await fetch(`${baseUrl}/messages?cursor=not-a-valid-cursor`);
 
   expect(response.status).toBe(400);
+  await readErrorResponse(response);
 });
 
 function postMessage(body: object) {

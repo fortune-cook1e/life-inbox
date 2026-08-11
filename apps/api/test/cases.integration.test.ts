@@ -8,6 +8,7 @@ import { Client } from "pg";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module.js";
+import { expectRequestId, readErrorResponse } from "./api-response.helpers.js";
 
 let app: INestApplication;
 let baseUrl: string;
@@ -46,6 +47,7 @@ it("DELETE /cases/:caseId deletes the Case and all related Messages and Events",
     });
 
     expect(response.status).toBe(204);
+    expectRequestId(response);
     expect(await response.text()).toBe("");
     await expect(countCaseGraph(targetCaseId)).resolves.toEqual({
       cases: 0,
@@ -67,18 +69,20 @@ it("DELETE /cases/:caseId deletes the Case and all related Messages and Events",
 
 it("DELETE /cases/:caseId returns 404 without deleting other data", async () => {
   const existingCaseId = randomUUID();
+  const missingCaseId = randomUUID();
 
   try {
     await seedCase(existingCaseId, "Existing");
 
-    const response = await fetch(`${baseUrl}/cases/${randomUUID()}`, {
+    const response = await fetch(`${baseUrl}/cases/${missingCaseId}`, {
       method: "DELETE",
     });
 
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toMatchObject({
-      statusCode: 404,
-      error: "Not Found",
+    await expect(readErrorResponse(response)).resolves.toEqual({
+      code: 2,
+      message: `Case ${missingCaseId} was not found.`,
+      data: null,
     });
     await expect(countCaseGraph(existingCaseId)).resolves.toEqual({
       cases: 1,

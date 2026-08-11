@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { HttpStatus, Injectable } from "@nestjs/common";
 import { eq, inArray } from "drizzle-orm";
 
+import { PublicApiException } from "../common/http/public-api.exception.js";
 import { DatabaseService } from "../database/database.service.js";
 import { chatMessages, events, lifeCases, pendingQuestions } from "../database/schema.js";
 
@@ -18,7 +19,7 @@ export class CasesService {
         .limit(1);
 
       if (!lifeCase) {
-        throw new NotFoundException(`Case ${caseId} was not found.`);
+        throw new PublicApiException(`Case ${caseId} was not found.`, HttpStatus.NOT_FOUND);
       }
 
       const caseEvents = await transaction
