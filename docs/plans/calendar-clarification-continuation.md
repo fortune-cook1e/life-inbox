@@ -1,10 +1,9 @@
 # Calendar Clarification Continuation
 
-Status: approved for implementation | Approved: 2026-08-03
+Status: implemented | Approved: 2026-08-03 | Implemented: 2026-08-06
 
-This plan describes future work. Until it is implemented and verified,
-[`../features/calendar-assistant.md`](../features/calendar-assistant.md) remains the source of truth
-for current behavior.
+This plan records the implemented clarification-continuation slice. The maintained source of truth
+for current behavior is [`../features/calendar-assistant.md`](../features/calendar-assistant.md).
 
 ## 1. Goal and boundary
 
@@ -12,9 +11,9 @@ When a user answers an earlier clarification question, continue the original `CO
 instead of creating a new Case. The backend exposes at most two recent pending questions, and the
 Agent may update only one candidate through a validated tool.
 
-Today each `POST /messages` starts with only the current text. `ask_user` does not persist the field
-it is waiting for, and `propose_calendar_event` cannot patch an Event. A reply such as `10 AM`
-therefore starts a duplicate Case. This slice closes that gap.
+Before this slice, each `POST /messages` started with only the current text. `ask_user` did not
+persist the field it was waiting for, and `propose_calendar_event` could not patch an Event. A reply
+such as `10 AM` therefore started a duplicate Case. This slice closes that gap.
 
 | Input                              | Agent route                                                   | Result                                                    |
 | ---------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
@@ -27,7 +26,8 @@ therefore starts a duplicate Case. This slice closes that gap.
 
 Approved limits:
 
-- Required fields only: `title`, `startAt`, and `timeZone`; one open question per Event.
+- Required fields: `title`, an explicit-time `startAt`, `timeZone`, and the time for any supplied
+  date-only `endAt`; one open question per Event.
 - No `replyToMessageId`, `caseId` request field, or `CASE_SELECTION` state.
 - No general historical Case matching, arbitrary old Event edit, embeddings, RAG, or backfill.
 - No auth, multi-user isolation, confirmation, export, provider write, web work, or run recovery.
@@ -73,7 +73,7 @@ A single database candidate is not sufficient evidence. `Thanks` does not answer
 
 Add PostgreSQL enums:
 
-- `pending_question_field`: `title`, `startAt`, `timeZone`
+- `pending_question_field`: `title`, `startAt`, `endAt`, `timeZone`
 - `pending_question_status`: `OPEN`, `RESOLVED`
 
 Add `pending_questions`:
@@ -119,7 +119,7 @@ the same Event.
 
 ### `search_pending_questions`
 
-- Input: unique `fields` from `title`, `startAt`, and `timeZone`.
+- Input: unique `fields` from `title`, `startAt`, `endAt`, and `timeZone`.
 - Output: zero to two bounded candidates plus `hasMore`.
 - This tool is read-only and never binds the input message.
 
@@ -129,6 +129,7 @@ Input is `candidateToken` plus exactly one field value:
 
 - `title`: nonblank string
 - `startAt`: offset-aware ISO 8601 timestamp
+- `endAt`: offset-aware ISO 8601 timestamp
 - `timeZone`: valid IANA time zone
 
 Reject database IDs and aliases not issued in the current run. Before writing, validate that:

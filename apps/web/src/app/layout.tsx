@@ -8,18 +8,17 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
-  title: "LifeInbox — Turn notices into clear next steps",
-  description:
-    "Review important life notices, confirm the next action, and export it to Apple Calendar.",
+  title: "LifeInbox | Calendar assistant",
+  description: "Turn everyday appointments, deadlines, and reminders into clear calendar drafts.",
   openGraph: {
     title: "LifeInbox",
-    description: "Clear next steps from everyday notices.",
+    description: "Clear calendar drafts from everyday messages.",
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "LifeInbox product preview" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "LifeInbox",
-    description: "Clear next steps from everyday notices.",
+    description: "Clear calendar drafts from everyday messages.",
     images: ["/og.png"],
   },
 };
