@@ -7,9 +7,10 @@ import { ApiExceptionFilter } from "./common/http/api-exception.filter.js";
 import { createPublicValidationException } from "./common/http/public-api.exception.js";
 import { HealthModule } from "./health/health.module.js";
 import { MessagesModule } from "./messages/messages.module.js";
+import { PlaygroundModule } from './playground/playground.module';
 
 @Module({
-  imports: [CasesModule, HealthModule, MessagesModule],
+  imports: [CasesModule, HealthModule, MessagesModule, PlaygroundModule],
   providers: [
     {
       provide: APP_PIPE,
