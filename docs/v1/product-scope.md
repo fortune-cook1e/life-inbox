@@ -1,13 +1,12 @@
-# Personal Assistant V1 — Product Scope
+# Event Assistant V1: Product Scope
 
 ## 1. Goal
 
-V1 is a Personal Assistant with one persistent conversation per user.
+V1 is an Event Assistant with one persistent conversation per user.
 
-The first version contains only two capabilities:
+The first version contains one capability:
 
-- Event Agent
-- Email Agent
+- Event workflow, followed by a bounded Event Agent
 
 The goal is to build a small but complete human-in-the-loop workflow before introducing more advanced capabilities such as memory, RAG, or multi-agent collaboration.
 
@@ -40,12 +39,14 @@ If the message is unrelated to Event creation, no Event action is triggered.
 ```text
 User Message
     ↓
-LLM
+Event Intent Check
     ↓
-Normal Assistant Response
+Event-only Fallback Response
 ```
 
 The response is stored as part of the interaction history.
+
+V1 does not provide open-domain assistant answers. It returns a short response explaining that it can help create Events.
 
 ### 2.2 Event Intent Detected
 
@@ -63,9 +64,11 @@ Event Card
 
 The LLM extracts as much information as possible from the user's message.
 
-V1 does **not** ask follow-up questions for missing information.
+The initial fixed workflow does **not** ask follow-up questions for missing information.
 
 Missing fields remain empty and can be completed manually by the user directly in the Event Card.
+
+A later V1 phase may add focused clarification through a bounded Event Agent after the fixed workflow is working.
 
 ---
 
@@ -122,8 +125,8 @@ This is also a valid Event:
 ```text
 Title: Submit Assignment
 Start: 2026-08-20 15:00
-End: —
-Location: —
+End: Not set
+Location: Not set
 Timezone: Europe/Stockholm
 ```
 
@@ -169,7 +172,7 @@ Start       15:00
 End         16:00
 Location    Ericsson
 Timezone    Europe/Stockholm
-Description —
+Description Not set
 
 [Confirm] [Edit] [Reject]
 ```
@@ -208,7 +211,7 @@ Example:
 LLM extracted:
 
 Start: 15:00
-End: —
+End: Not set
 ```
 
 The user changes it to:
@@ -248,110 +251,7 @@ Event creation was cancelled.
 
 ---
 
-## 8. Email Agent
-
-After an Event has been successfully confirmed, the assistant provides an optional action:
-
-```text
-[Create Email Reminder]
-```
-
-The Email Agent is triggered only when the user explicitly chooses this action.
-
-The flow is:
-
-```text
-Confirmed Event
-      ↓
-User selects Create Email Reminder
-      ↓
-Email Agent
-      ↓
-Generate Email Draft
-      ↓
-Email Card
-```
-
-The Email Agent must use the final confirmed Event data rather than the original user message.
-
-This ensures that user edits are respected.
-
----
-
-## 9. Email Card
-
-The Email Card contains:
-
-### Required Fields
-
-- To
-- Subject
-- Body
-
-Example:
-
-```text
-Email Reminder
-
-To
-user@example.com
-
-Subject
-Project Meeting Reminder
-
-Body
-You have a project meeting tomorrow at 15:00.
-
-[Confirm] [Edit] [Reject]
-```
-
----
-
-## 10. Email Human-in-the-Loop Interaction
-
-The Email Card supports:
-
-- Confirm
-- Edit
-- Reject
-
-### 10.1 Confirm
-
-```text
-Confirm
-    ↓
-Send Email
-```
-
-In V1, confirmation means sending the email immediately.
-
-Scheduled email delivery is not part of V1.
-
-### 10.2 Edit
-
-The user may modify:
-
-- recipient
-- subject
-- body
-
-The edited version becomes the final email content.
-
-### 10.3 Reject
-
-```text
-Reject
-    ↓
-Cancel Email action
-    ↓
-Assistant displays a short cancellation message
-```
-
-No email is sent.
-
----
-
-## 11. Conversation Model
+## 8. Conversation Model
 
 V1 uses one persistent conversation per user.
 
@@ -367,16 +267,14 @@ User
       ├── Event Card
       ├── Event Edit
       ├── Event Confirm
-      ├── Assistant Message
-      ├── Email Card
-      └── Email Reject
+      └── Assistant Message
 ```
 
 The conversation acts as one continuous interaction timeline.
 
 ---
 
-## 12. Interaction History
+## 9. Interaction History
 
 A core V1 requirement is to preserve the complete interaction history.
 
@@ -384,24 +282,17 @@ The system must persist more than plain text messages.
 
 It must also preserve structured interactions.
 
-### 12.1 Text Interactions
+### 9.1 Text Interactions
 
 - User Message
 - Assistant Message
 
-### 12.2 Event Interactions
+### 9.2 Event Interactions
 
 - Event Card
 - Event Edit
 - Event Confirm
 - Event Reject
-
-### 12.3 Email Interactions
-
-- Email Card
-- Email Edit
-- Email Confirm
-- Email Reject
 
 Example interaction:
 
@@ -433,31 +324,11 @@ Confirm
 
 Assistant
 Event created.
-
-↓
-
-User
-Create Email Reminder
-
-↓
-
-Assistant
-Email Card
-
-↓
-
-User
-Reject
-
-↓
-
-Assistant
-Email action was cancelled.
 ```
 
 ---
 
-## 13. Replay Requirement
+## 10. Replay Requirement
 
 Refreshing the browser or reopening the application must not remove previous interactions.
 
@@ -491,7 +362,7 @@ The final Event should contain `16:00`.
 
 ---
 
-## 14. Interaction History vs Business Data
+## 11. Interaction History vs Business Data
 
 V1 distinguishes two concepts.
 
@@ -513,7 +384,7 @@ User confirmed the Event.
 
 Describes:
 
-> What Event or Email was ultimately created?
+> What Event was ultimately created?
 
 Example:
 
@@ -525,7 +396,7 @@ These two types of information should not be treated as the same thing.
 
 ---
 
-## 15. Core Product Principle
+## 12. Core Product Principle
 
 > **Every visible interaction must be persisted and replayable.**
 
@@ -539,7 +410,7 @@ Final Business Result
 
 ---
 
-## 16. V1 Core Flow
+## 13. V1 Core Flow
 
 ```text
 Natural-Language Input
@@ -557,19 +428,11 @@ Response      ↓
       Edit / Confirm / Reject
               ↓
         Confirmed Event
-              ↓
-      Optional Email Reminder
-              ↓
-          Email Agent
-              ↓
-          Email Card
-              ↓
-      Edit / Confirm / Reject
 ```
 
 ---
 
-## 17. Out of Scope for V1
+## 14. Out of Scope for V1
 
 The following capabilities are intentionally excluded from V1:
 
@@ -582,11 +445,10 @@ The following capabilities are intentionally excluded from V1:
 - Vector Database
 - Multi-Agent Collaboration
 - Agent Supervisor
-- LangGraph Orchestration
+- Email generation and delivery
 - Task Management
 - Recurring Events
 - Complex Reminder Rules
-- Scheduled Email Delivery
 - Proactive Agent Actions
 - Multiple Conversations
 
@@ -594,7 +456,7 @@ These capabilities may be introduced in later versions when actual product requi
 
 ---
 
-## 18. V1 Success Criteria
+## 15. V1 Success Criteria
 
 V1 is successful when a user can complete the following flow:
 
@@ -604,9 +466,6 @@ Enter natural-language text
 → Edit Event information
 → Confirm or Reject
 → Persist the interaction
-→ Optionally create an Email Reminder
-→ Edit the Email
-→ Confirm or Reject
 → Reopen the application
 → See the complete original interaction
 ```
@@ -615,4 +474,4 @@ The primary goal of V1 is not to create a complex autonomous agent.
 
 The goal is to create a:
 
-> **Simple, reliable, persistent, and replayable human-in-the-loop Personal Assistant workflow.**
+> **Simple, reliable, persistent, and replayable human-in-the-loop Event workflow.**

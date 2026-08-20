@@ -1,8 +1,10 @@
-# 05 — Implementation Roadmap
+# 05: Implementation Roadmap
 
 ## 1. Goal
 
 Implement V1 incrementally.
+
+This roadmap and `product-scope.md` define the current Event-only V1. Other technical documents may still contain details from the earlier Email scope. Those details are not V1 requirements and should be removed or revised only when the related Event slice begins.
 
 Do not build the whole system at once.
 
@@ -10,7 +12,7 @@ Each phase should produce a working result before moving to the next one.
 
 ---
 
-## 2. Phase 0 — Project Bootstrap
+## 2. Phase 0: Project Bootstrap
 
 Set up:
 
@@ -36,7 +38,7 @@ Do not add OpenAI yet.
 
 ---
 
-## 3. Phase 1 — Persistent Interaction Timeline
+## 3. Phase 1: Persistent Interaction Timeline
 
 Build:
 
@@ -84,7 +86,7 @@ Submit text
 
 ---
 
-## 4. Phase 2 — Event Agent Extraction
+## 4. Phase 2: Structured Event Extraction
 
 Add:
 
@@ -100,7 +102,7 @@ Implement:
 ```text
 User Message
       ↓
-Event Agent
+Event Extractor
       ↓
 Event or Normal Text
 ```
@@ -138,9 +140,11 @@ Example:
 
 The Event Card must survive refresh.
 
+This phase is a fixed workflow, not an Agent loop.
+
 ---
 
-## 5. Phase 3 — Event Human-in-the-Loop
+## 5. Phase 3: Event Human-in-the-Loop
 
 Add:
 
@@ -196,102 +200,50 @@ Also implement timezone validation and normalization.
 
 ---
 
-## 6. Phase 4 — Email Agent
+## 6. Phase 4: Bounded Event Agent
 
 Add:
 
 ```text
-email_drafts
-Email Agent
-Email Card
+LangGraph
+Focused Event clarification
+Explicit stop conditions
 ```
 
 Flow:
 
 ```text
-Confirmed Event
-      ↓
-Create Email Reminder
-      ↓
-Email Agent
-      ↓
-Email Draft
-      ↓
-Email Card
+Incomplete Event Draft
+        ↓
+Bounded Event Agent
+        ↓
+Ask one focused question or show the Event Card
 ```
 
-Implement:
+The Agent may interpret the user's answer and choose between a small set of Event tools. Backend handlers still validate every state transition and database write.
 
-```text
-Edit
-Reject
-```
-
-Do not send real email yet.
+Define the exact tools and limits only when this phase begins. At minimum, the loop must have a model-call limit, a tool-call limit, a time limit, and a deterministic fallback.
 
 ### Acceptance Criteria
 
 ```text
-Confirmed Event
-→ Generate Email Card
-→ Edit Email
-→ Refresh
-→ Email Card and edits remain
-```
-
----
-
-## 7. Phase 5 — Email Delivery
-
-Choose an email provider.
-
-Implement:
-
-```text
-Email Confirm
-Real email send
-emails table
-Delivery result
-Failure handling
-```
-
-Flow:
-
-```text
-User Confirm
-      ↓
-Validate Email Draft
-      ↓
-Send Email
-      ↓
-Persist result
-```
-
-If sending succeeds:
-
-```text
-Mark Draft SENT
-→ Persist EMAIL_CONFIRM
-```
-
-If sending fails:
-
-```text
-Do not mark SENT
-→ Return EMAIL_DELIVERY_FAILED
+Missing required Event information
+→ Ask one focused question
+→ User answers
+→ Update the Event Draft
+→ Show the Event Card
 ```
 
 ### Learning Focus
 
-- external APIs
-- side effects
-- secrets
-- failure handling
-- duplicate-send protection
+- LangGraph state and routing
+- bounded Agent loops
+- backend-owned tools
+- deterministic fallbacks
 
 ---
 
-## 8. Phase 6 — Hardening
+## 7. Phase 5: Hardening
 
 Only after the full workflow works.
 
@@ -312,7 +264,7 @@ Do not introduce new product features in this phase.
 
 ---
 
-## 9. Phase 7 — V1 Completion Review
+## 8. Phase 6: V1 Completion Review
 
 Verify the complete flow:
 
@@ -324,11 +276,6 @@ User Message
 → Edit
 → Confirm
 → Event
-→ Create Email Reminder
-→ Email Card
-→ Edit
-→ Confirm
-→ Send Email
 → Refresh
 → Full interaction replay
 ```
@@ -338,18 +285,16 @@ Also verify:
 ```text
 No-event message
 Event Reject
-Email Reject
 Missing Event fields
 Invalid Event time
 LLM failure
-Email failure
 Duplicate Confirm
 Timezone handling
 ```
 
 ---
 
-## 10. Development Method
+## 9. Development Method
 
 For each phase, work one small step at a time.
 
@@ -390,7 +335,7 @@ The goal is to understand and implement each layer yourself rather than generate
 
 ---
 
-## 11. V1 Implementation Order
+## 10. V1 Implementation Order
 
 ```text
 Phase 0
@@ -400,21 +345,18 @@ Phase 1
 Persistent Timeline
       ↓
 Phase 2
-Event Agent
+Structured Event Extraction
       ↓
 Phase 3
 Event HITL
       ↓
 Phase 4
-Email Agent
+Bounded Event Agent
       ↓
 Phase 5
-Email Delivery
-      ↓
-Phase 6
 Hardening
       ↓
-Phase 7
+Phase 6
 V1 Review
 ```
 
