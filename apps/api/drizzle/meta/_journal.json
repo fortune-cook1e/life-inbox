@@ -5,36 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1785074904091,
-      "tag": "0000_colossal_falcon",
+      "when": 1787302978002,
+      "tag": "0000_dizzy_blackheart",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1785504352404,
-      "tag": "0001_clumsy_lionheart",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1785506845292,
-      "tag": "0002_minor_sage",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1786043295077,
-      "tag": "0003_famous_echo",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1786048360488,
-      "tag": "0004_curly_taskmaster",
+      "when": 1787322064137,
+      "tag": "0001_bouncy_daimon_hellstrom",
       "breakpoints": true
     }
   ]

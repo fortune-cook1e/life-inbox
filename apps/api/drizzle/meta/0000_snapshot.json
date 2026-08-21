@@ -1,11 +1,11 @@
 {
-  "id": "8448e3d3-2f31-4063-ba56-d80c3d1344da",
+  "id": "03cde7bd-c9fe-4ab3-866d-cf09d9fe8772",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.chat_messages": {
-      "name": "chat_messages",
+    "public.messages": {
+      "name": "messages",
       "schema": "",
       "columns": {
         "id": {
@@ -15,22 +15,9 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "case_id": {
-          "name": "case_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "role": {
           "name": "role",
-          "type": "chat_message_role",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "chat_message_kind",
+          "type": "message_role",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
@@ -41,153 +28,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "client_message_id": {
-          "name": "client_message_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "chat_messages_client_message_id_unique": {
-          "name": "chat_messages_client_message_id_unique",
-          "columns": [
-            {
-              "expression": "client_message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "chat_messages_timeline_idx": {
-          "name": "chat_messages_timeline_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "chat_messages_case_timeline_idx": {
-          "name": "chat_messages_case_timeline_idx",
-          "columns": [
-            {
-              "expression": "case_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "chat_messages_case_id_life_cases_id_fk": {
-          "name": "chat_messages_case_id_life_cases_id_fk",
-          "tableFrom": "chat_messages",
-          "tableTo": "life_cases",
-          "columnsFrom": [
-            "case_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chat_messages_content_not_blank_check": {
-          "name": "chat_messages_content_not_blank_check",
-          "value": "length(btrim(\"chat_messages\".\"content\")) > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.life_cases": {
-      "name": "life_cases",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "status": {
-          "name": "status",
-          "type": "life_case_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'OPEN'"
-        },
-        "resolution": {
-          "name": "resolution",
-          "type": "life_case_resolution",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -200,62 +42,21 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "life_cases_status_resolution_check": {
-          "name": "life_cases_status_resolution_check",
-          "value": "(\"life_cases\".\"status\" = 'OPEN' AND \"life_cases\".\"resolution\" IS NULL)\n        OR (\"life_cases\".\"status\" = 'CLOSED' AND \"life_cases\".\"resolution\" IS NOT NULL)"
-        },
-        "life_cases_version_positive_check": {
-          "name": "life_cases_version_positive_check",
-          "value": "\"life_cases\".\"version\" > 0"
+        "messages_content_not_empty": {
+          "name": "messages_content_not_empty",
+          "value": "length(btrim(\"messages\".\"content\")) > 0"
         }
       },
       "isRLSEnabled": false
     }
   },
   "enums": {
-    "public.chat_message_kind": {
-      "name": "chat_message_kind",
+    "public.message_role": {
+      "name": "message_role",
       "schema": "public",
       "values": [
-        "USER_TEXT",
-        "SOURCE_SUBMITTED",
-        "CLARIFICATION_QUESTION",
-        "CLARIFICATION_ANSWER",
-        "EVENT_EDIT",
-        "DRAFT_PROGRESS",
-        "EVENT_PREVIEW",
-        "EVENT_CONFIRMED",
-        "EVENT_UPDATE_PREVIEW",
-        "EVENT_CANCELLATION_PREVIEW",
-        "EVENT_QUERY_RESULT",
-        "STATUS"
-      ]
-    },
-    "public.chat_message_role": {
-      "name": "chat_message_role",
-      "schema": "public",
-      "values": [
-        "USER",
-        "ASSISTANT",
-        "SYSTEM"
-      ]
-    },
-    "public.life_case_resolution": {
-      "name": "life_case_resolution",
-      "schema": "public",
-      "values": [
-        "EVENT_CONFIRMED",
-        "EVENT_IGNORED",
-        "NO_ACTION",
-        "EVENT_CANCELLED"
-      ]
-    },
-    "public.life_case_status": {
-      "name": "life_case_status",
-      "schema": "public",
-      "values": [
-        "OPEN",
-        "CLOSED"
+        "user",
+        "assistant"
       ]
     }
   },
