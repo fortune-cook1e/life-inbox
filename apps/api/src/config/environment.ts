@@ -5,6 +5,8 @@ const envPath = resolve(__dirname, "../../.env");
 
 const DEFAULT_API_PORT = 3001;
 
+type RequiredEnvironmentVariable = "DATABASE_URL" | "OPENAI_API_KEY" | "OPENAI_MODEL";
+
 export function loadEnvironment(): void {
   config({
     path: envPath,
@@ -12,14 +14,26 @@ export function loadEnvironment(): void {
   });
 }
 
-export function getDatabaseUrl(): string {
-  const value = process.env.DATABASE_URL?.trim();
+function getRequiredEnvironmentVariable(name: RequiredEnvironmentVariable): string {
+  const value = process.env[name]?.trim();
 
   if (!value) {
-    throw new Error("DATABASE_URL is required");
+    throw new Error(`${name} is required`);
   }
 
   return value;
+}
+
+export function getDatabaseUrl(): string {
+  return getRequiredEnvironmentVariable("DATABASE_URL");
+}
+
+export function getOpenAiApiKey(): string {
+  return getRequiredEnvironmentVariable("OPENAI_API_KEY");
+}
+
+export function getOpenAiModel(): string {
+  return getRequiredEnvironmentVariable("OPENAI_MODEL");
 }
 
 export function getApiPort(): number {
