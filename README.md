@@ -29,9 +29,6 @@ pnpm dev
 - PostgreSQL: localhost:5432
 - Redis: localhost:6379
 
-The PostgreSQL container uses the pgvector image. Run `pnpm db:prepare` before
-adding vector columns to enable the `vector` extension idempotently.
-
 ## Workspace layout
 
 ```text
@@ -54,7 +51,6 @@ pnpm format:check
 
 pnpm db:up
 pnpm db:down
-pnpm db:prepare     # idempotently enable the pgvector extension
 pnpm db:generate
 pnpm db:migrate
 pnpm db:push        # local development only

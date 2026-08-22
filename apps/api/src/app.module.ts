@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
+import { APP_PIPE } from "@nestjs/core";
 import { HealthModule } from "./health/health.module";
 import { ZodValidationPipe } from "nestjs-zod";
 import { MessagesModule } from "./messages/messages.module";
