@@ -59,6 +59,9 @@ Before presenting a solution, review it at three levels:
 - Database: data ownership, nullability, constraints, relationships, query-driven
   indexes, migration safety, transaction boundaries, concurrency, and retries.
 
+Apply the design check only to affected layers. Mark irrelevant items as `N/A`
+instead of inventing infrastructure, constraints, or requirements.
+
 Then complete this design check:
 
 1. Name the business capability and the NestJS module that owns it.
@@ -99,6 +102,9 @@ of decision before presenting future code.
 - Keep business decisions in application/domain services.
 - Keep database, external API, queue, and LLM integrations behind explicit
   infrastructure boundaries.
+- External clients that must be replaced in deterministic tests should be
+  registered as injectable providers. Keep the boundary minimal and owned by
+  its consumer; do not introduce a generic integration framework.
 - Keep module dependencies explicit through `imports`, `providers`, and
   `exports`. Export a provider only when another module has a real requirement
   for it.
@@ -178,7 +184,9 @@ of decision before presenting future code.
 
 ## Production requirements
 
-For affected functionality, consider:
+For affected functionality, consider the following items. Report relevant
+items that are intentionally deferred; do not implement them in an unrelated
+slice.
 
 - validated environment configuration;
 - structured logging and correlation IDs;
@@ -199,9 +207,25 @@ until a concrete requirement and failure scenario justify them.
 
 ## Testing
 
-Every behavioral change must include proportional verification. Choose the
-smallest test layer that proves the changed invariant. A slice does not need
-every test type below:
+Use test-first development when a slice changes core business behavior:
+
+1. Provide the complete reference test before implementation code.
+2. The user handwrites and runs the test.
+3. Confirm that it fails for the expected business reason.
+4. Only then provide the slice implementation.
+5. Run the focused test again after implementation.
+
+Core behavior includes business rules, state transitions, transactions,
+idempotency, critical database constraints, Agent result routing, external
+failure mapping, authorization, and bug regressions.
+
+Do not force TDD for boilerplate, simple Nest module wiring, configuration-only
+changes, generated migrations, type declarations, or trivial mappers. Verify
+those changes with the smallest relevant check. If a non-trivial behavior cannot
+practically start with a test, explain why before providing implementation code.
+
+Choose the smallest test layer that proves the changed invariant. A slice does
+not need every test type below:
 
 - unit tests for isolated domain rules;
 - Nest `TestingModule` tests for provider wiring and dependency boundaries;
@@ -214,8 +238,8 @@ every test type below:
 Use deterministic model doubles in normal tests. Do not consume paid model
 credits during routine verification.
 
-Generated tests are not sufficient evidence by themselves. Demonstrate that
-the test fails when the invariant is intentionally broken when practical.
+Generated tests are not sufficient evidence by themselves. The red step must be
+observed for test-first slices rather than assumed.
 
 ## Current V1 decisions
 
@@ -223,7 +247,8 @@ the test fails when the invariant is intentionally broken when practical.
   canonical V1 documents. Treat conflicting Email content in older technical
   documents as obsolete V1 guidance.
 - V1 is Event-only. Do not implement Email generation or delivery.
-- Build the fixed Event workflow before introducing the bounded Event Agent.
+- Build the fixed, single-pass Event extraction workflow first. Introduce a
+  bounded LangGraph tool loop only after that workflow is complete.
 - Use LangChain for model integration. Add LangGraph only when the bounded Agent
   loop begins.
 - Do not add new AI SDK usage. Remove existing AI SDK dependencies only in an
@@ -235,7 +260,9 @@ the test fails when the invariant is intentionally broken when practical.
 
 Before declaring completion:
 
-- provide the exact formatting, lint, typecheck, test, and build commands;
+- provide the exact relevant formatting, lint, typecheck, test, and build
+  commands that are defined by the affected package; report a missing command
+  instead of inventing one;
 - provide database and migration checks when schema code changes;
 - run those commands only when the user explicitly authorizes Codex to run
   verification. Otherwise report them as not run and let the user execute them;

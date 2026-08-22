@@ -2,6 +2,36 @@
 
 This repository is both a product project and a backend/Agent learning project.
 
+## Instruction priority
+
+When repository guidance conflicts, use this order:
+
+1. The nearest scoped `AGENTS.md`.
+2. The explicitly approved task scope and authorization.
+3. Canonical V1 documents.
+4. `docs/HANDOFF.md` as a status snapshot.
+5. Older technical documentation.
+
+Current code, schemas, migrations, and git state remain authoritative for
+implementation facts. Explicit task authorization does not override repository
+safety, security, or data-protection rules.
+
+Rule language is intentional:
+
+- **Must**, **do not**, and imperative rules are required.
+- **Should** and **prefer** are defaults; explain a concrete reason to deviate.
+- **Consider** means assess and report relevance, not automatically implement.
+
+## Handoff
+
+- Read `docs/HANDOFF.md` before planning or implementing repository work.
+- Treat it as a concise status snapshot. Current code and git state remain the
+  source of truth when they conflict with the handoff.
+- Update it after completing a slice or a major feature, or when a decision
+  changes the active scope or next slice.
+- Replace stale entries instead of appending a progress log. Keep the document
+  short enough to scan at the start of every task.
+
 ## Task flow
 
 A preferred task brief contains:
@@ -48,7 +78,13 @@ start without requesting another confirmation.
 
 ## Verification and learning
 
-- Run formatting, lint, typecheck, Vitest, build, and relevant database checks.
-- Verify the happy path and one important failure path.
+- Follow the nearest scoped `AGENTS.md` for test-first and learning workflow.
+- Provide the relevant verification commands that are actually defined by the
+  affected package.
+- Run verification only when the user explicitly authorizes it, and report what
+  was and was not run.
+- Verify the happy path and one important failure path proportionally to the
+  change.
 - Explain the final data flow, the main invariant, and one prevented failure.
-- Ask the user one short conceptual question before starting another slice.
+- Ask one short conceptual question before another slice only when the current
+  slice introduced a meaningful concept.
