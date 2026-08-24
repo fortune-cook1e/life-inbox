@@ -1,6 +1,6 @@
 # LifeInbox Handoff
 
-Updated: 2026-08-22
+Updated: 2026-08-24
 
 ## Scope and working agreement
 
@@ -26,12 +26,17 @@ Updated: 2026-08-22
 - `POST /messages` persists a user message and deterministic assistant reply.
 - `GET /messages` returns persisted history ordered by backend-generated
   `sequence`.
-- The isolated LangChain `EventAgentService` boundary has been handwritten but
-  has not been verified yet.
+- `EventAgentService` owns prompt/schema composition and receives its model
+  through a private Nest injection token.
+- Deterministic service tests cover structured Event output and model-failure
+  mapping without calling OpenAI.
 - `event_drafts` and its migration are implemented. PostgreSQL enforces one
   Draft per source message through a named unique constraint.
 - The Event Draft database integration test covers the duplicate-source
   failure path.
+- `EventsModule` owns pending Event Draft creation, IANA timezone resolution,
+  and the private Drizzle repository. Its PostgreSQL-backed service tests cover
+  persistence and invalid-timezone rejection.
 - Vitest loads the API environment once per test worker through `test/setup.ts`.
 - Drizzle schemas live under `src/database/schemas`.
 
@@ -44,9 +49,9 @@ Phase 2, Structured Event Extraction, is in progress.
 
 ## Next slice
 
-Not approved yet. Add a minimal injectable model boundary and deterministic
-tests for `EventAgentService` before connecting extraction to Event Draft
-persistence or `MessagesService`.
+Approved but deferred. Next, add the smallest durable Event Card representation
+to the message timeline before connecting `MessagesService`,
+`EventAgentService`, and `EventsService`.
 
 ## Known follow-ups
 
@@ -55,9 +60,8 @@ persistence or `MessagesService`.
 - `MessagesRepository` currently imports internal turn types from the HTTP DTO
   file. Move those types to the feature's internal boundary when message flow is
   changed.
-- Latest verification: formatting, workspace lint, workspace typecheck,
-  workspace build, Drizzle migration check, and API Vitest all pass. API Vitest
-  currently contains two passing tests.
+- The user reported all Event Agent and Events tests/checks passing. Codex did
+  not rerun them.
 
 ## Canonical documents
 
