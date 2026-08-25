@@ -10,7 +10,7 @@ export class MessagesController {
 
   @Post()
   async createMessage(@Body() input: CreateMessageDto): Promise<MessageTurnResponse> {
-    const turn = await this.messagesService.createTurn(input.content);
+    const turn = await this.messagesService.createTextTurn(input.content);
     return [toMessageResponse(turn.userMessage), toMessageResponse(turn.assistantMessage)];
   }
 

@@ -1,18 +1,29 @@
 import { Injectable } from "@nestjs/common";
 
 import { DatabaseService } from "../database/database.service";
-import { messages, type MessageRow, type NewMessageRow } from "../database/schemas";
-import { CreateMessageTurnInput, MessageTurn } from "./messages.dto";
+import { messages, type MessageRow } from "../database/schemas";
+import { CreateTextMessageTurnInput, MessageTurn } from "./messages.dto";
 import { asc } from "drizzle-orm";
 
-type CreateMessageRecord = Pick<NewMessageRow, "role" | "content">;
+interface CreateTextMessageRecord {
+  role: MessageRow["role"];
+  content: string;
+}
 
 @Injectable()
 export class MessagesRepository {
   constructor(private readonly database: DatabaseService) {}
 
-  async create(input: CreateMessageRecord): Promise<MessageRow> {
-    const [message] = await this.database.db.insert(messages).values(input).returning();
+  async createTextMessage(input: CreateTextMessageRecord): Promise<MessageRow> {
+    const [message] = await this.database.db
+      .insert(messages)
+      .values({
+        role: input.role,
+        kind: "text",
+        content: input.content,
+        payload: null,
+      })
+      .returning();
 
     if (message === undefined) {
       throw new Error("Message insert returned no row.");
@@ -21,10 +32,21 @@ export class MessagesRepository {
     return message;
   }
 
-  async createTurn(input: CreateMessageTurnInput): Promise<MessageTurn> {
+  async createTextTurn(input: CreateTextMessageTurnInput): Promise<MessageTurn> {
     const insertedMessages = await this.database.db
       .insert(messages)
-      .values([input.user, input.assistant])
+      .values([
+        {
+          ...input.user,
+          kind: "text",
+          payload: null,
+        },
+        {
+          ...input.assistant,
+          kind: "text",
+          payload: null,
+        },
+      ])
       .returning();
 
     const userMessage = insertedMessages.find((message) => message.role === "user");

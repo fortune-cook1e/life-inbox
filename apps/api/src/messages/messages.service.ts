@@ -8,17 +8,17 @@ import { MessageTurn } from "./messages.dto";
 export class MessagesService {
   constructor(private readonly messagesRepository: MessagesRepository) {}
 
-  async createUserMessage(content: string): Promise<MessageRow> {
-    return this.messagesRepository.create({
+  async createUserTextMessage(content: string): Promise<MessageRow> {
+    return this.messagesRepository.createTextMessage({
       role: "user",
       content,
     });
   }
 
-  async createTurn(content: string): Promise<MessageTurn> {
+  async createTextTurn(content: string): Promise<MessageTurn> {
     const assistantContent = `Received: ${content}`;
 
-    return this.messagesRepository.createTurn({
+    return this.messagesRepository.createTextTurn({
       user: {
         role: "user",
         content,

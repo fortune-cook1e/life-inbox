@@ -12,7 +12,7 @@ const CreateMessageSchema = z
 
 export class CreateMessageDto extends createZodDto(CreateMessageSchema) {}
 
-export interface CreateMessageTurnInput {
+export interface CreateTextMessageTurnInput {
   user: {
     role: "user";
     content: string;
