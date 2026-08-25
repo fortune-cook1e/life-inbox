@@ -1,51 +1,13 @@
-import type { PoolClient } from "pg";
-import { Pool } from "pg";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-
-import { getDatabaseUrl } from "../src/config/environment";
+import { describe, expect, it } from "vitest";
+import { useTestDatabaseTransaction } from "./support/database-test-transaction";
 
 describe("event_drafts database invariants", () => {
-  let pool: Pool | undefined;
-  let client: PoolClient | undefined;
-
-  beforeAll(() => {
-    pool = new Pool({
-      connectionString: getDatabaseUrl(),
-    });
-  });
-
-  beforeEach(async () => {
-    if (pool === undefined) {
-      throw new Error("Test database pool was not initialized.");
-    }
-
-    client = await pool.connect();
-    await client.query("BEGIN");
-  });
-
-  afterEach(async () => {
-    if (client === undefined) {
-      return;
-    }
-
-    await client.query("ROLLBACK");
-    client.release();
-    client = undefined;
-  });
-
-  afterAll(async () => {
-    await pool?.end();
-    pool = undefined;
-  });
+  const database = useTestDatabaseTransaction();
 
   it("allows at most one event draft for each source message", async () => {
-    if (client === undefined) {
-      throw new Error("Test database client was not initialized.");
-    }
+    const client = database.getClient();
 
-    const database = client;
-
-    const messageResult = await database.query<{ id: string }>(
+    const messageResult = await client.query<{ id: string }>(
       `
         INSERT INTO messages (role, content)
         VALUES ('user', $1)
@@ -60,7 +22,7 @@ describe("event_drafts database invariants", () => {
       throw new Error("Message insert returned no row.");
     }
 
-    await database.query(
+    await client.query(
       `
         INSERT INTO event_drafts (
           source_message_id,
@@ -73,7 +35,7 @@ describe("event_drafts database invariants", () => {
       [sourceMessageId, "Meet Anna", "2026-08-24 15:00:00", "Europe/Stockholm"],
     );
 
-    const duplicateInsert = database.query(
+    const duplicateInsert = client.query(
       `
         INSERT INTO event_drafts (
           source_message_id,
