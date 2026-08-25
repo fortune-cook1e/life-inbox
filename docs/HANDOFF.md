@@ -1,6 +1,6 @@
 # LifeInbox Handoff
 
-Updated: 2026-08-24
+Updated: 2026-08-25
 
 ## Scope and working agreement
 
@@ -37,6 +37,10 @@ Updated: 2026-08-24
 - `EventsModule` owns pending Event Draft creation, IANA timezone resolution,
   and the private Drizzle repository. Its PostgreSQL-backed service tests cover
   persistence and invalid-timezone rejection.
+- The message timeline stores either text or an assistant Event Card JSON
+  snapshot. PostgreSQL enforces valid `kind`, `content`, and `payload` shapes.
+- Database invariant tests share one transaction helper and roll back each test
+  on the same PostgreSQL connection.
 - Vitest loads the API environment once per test worker through `test/setup.ts`.
 - Drizzle schemas live under `src/database/schemas`.
 
@@ -49,9 +53,9 @@ Phase 2, Structured Event Extraction, is in progress.
 
 ## Next slice
 
-Approved but deferred. Next, add the smallest durable Event Card representation
-to the message timeline before connecting `MessagesService`,
-`EventAgentService`, and `EventsService`.
+Not approved yet. Add the application Event Card boundary: a validated payload,
+an explicit repository write method, and a discriminated history response.
+Do not connect the Event Agent workflow in the same slice.
 
 ## Known follow-ups
 
@@ -60,8 +64,8 @@ to the message timeline before connecting `MessagesService`,
 - `MessagesRepository` currently imports internal turn types from the HTTP DTO
   file. Move those types to the feature's internal boundary when message flow is
   changed.
-- The user reported all Event Agent and Events tests/checks passing. Codex did
-  not rerun them.
+- The user reported migration, API tests, typecheck, lint, build, and Drizzle
+  checks passing. Codex did not rerun them.
 
 ## Canonical documents
 
