@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
+import { asc } from "drizzle-orm";
 
 import { DatabaseService } from "../database/database.service";
 import { messages, type MessageRow } from "../database/schemas";
-import { CreateTextMessageTurnInput, MessageTurn } from "./messages.dto";
-import { asc } from "drizzle-orm";
+import type {
+  CreateTextMessageTurnInput,
+  EventCardPayload,
+  TextMessageTurn,
+} from "./messages.types";
 
 interface CreateTextMessageRecord {
   role: MessageRow["role"];
@@ -32,18 +36,20 @@ export class MessagesRepository {
     return message;
   }
 
-  async createTextTurn(input: CreateTextMessageTurnInput): Promise<MessageTurn> {
+  async createTextTurn(input: CreateTextMessageTurnInput): Promise<TextMessageTurn> {
     const insertedMessages = await this.database.db
       .insert(messages)
       .values([
         {
-          ...input.user,
+          role: "user",
           kind: "text",
+          content: input.userContent,
           payload: null,
         },
         {
-          ...input.assistant,
+          role: "assistant",
           kind: "text",
+          content: input.assistantContent,
           payload: null,
         },
       ])
@@ -61,6 +67,24 @@ export class MessagesRepository {
       userMessage,
       assistantMessage,
     };
+  }
+
+  async createEventCardMessage(payload: EventCardPayload): Promise<MessageRow> {
+    const [message] = await this.database.db
+      .insert(messages)
+      .values({
+        role: "assistant",
+        kind: "event_card",
+        content: null,
+        payload,
+      })
+      .returning();
+
+    if (message === undefined) {
+      throw new Error("Event Card Message insert returned no row.");
+    }
+
+    return message;
   }
 
   async findAll(): Promise<MessageRow[]> {

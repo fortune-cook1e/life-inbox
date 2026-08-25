@@ -2,7 +2,11 @@ import { Injectable } from "@nestjs/common";
 
 import type { MessageRow } from "../database/schemas";
 import { MessagesRepository } from "./messages.repository";
-import { MessageTurn } from "./messages.dto";
+import {
+  eventCardPayloadSchema,
+  type EventCardPayload,
+  type TextMessageTurn,
+} from "./messages.types";
 
 @Injectable()
 export class MessagesService {
@@ -15,19 +19,19 @@ export class MessagesService {
     });
   }
 
-  async createTextTurn(content: string): Promise<MessageTurn> {
+  async createTextTurn(content: string): Promise<TextMessageTurn> {
     const assistantContent = `Received: ${content}`;
 
     return this.messagesRepository.createTextTurn({
-      user: {
-        role: "user",
-        content,
-      },
-      assistant: {
-        role: "assistant",
-        content: assistantContent,
-      },
+      userContent: content,
+      assistantContent,
     });
+  }
+
+  async createEventCardMessage(payload: EventCardPayload): Promise<MessageRow> {
+    const validatedPayload = eventCardPayloadSchema.parse(payload);
+
+    return this.messagesRepository.createEventCardMessage(validatedPayload);
   }
 
   async getHistory(): Promise<MessageRow[]> {

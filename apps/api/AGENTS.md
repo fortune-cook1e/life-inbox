@@ -123,13 +123,15 @@ of decision before presenting future code.
   - `*.module.ts`: Nest module wiring only.
   - `*.controller.ts`: HTTP routing, DTO parsing, auth context, and response
     mapping.
-  - `*.dto.ts`: public request and response contracts.
+  - `*.dto.ts`: public request DTOs and their HTTP-bound runtime validation.
   - `*.service.ts`: business workflow and invariants.
   - `*.repository.ts`: database access and Drizzle queries.
   - `*.mapper.ts`: internal/database shape to public response shape, when the
     shapes differ.
-  - `*.type.ts`: shared internal feature types only when they are reused across
-    multiple files. Do not use it as a dumping ground; if a type is owned by one
+  - `*.types.ts`: shared feature contracts, response types, and any colocated
+    runtime schema needed to validate those contracts. Do not create a separate
+    feature `*.schema.ts`; database schemas remain under `src/database/schemas`.
+    Do not use the types file as a dumping ground; if a type is owned by one
     layer, keep it close to that layer.
 - Repositories should not import HTTP DTOs. Controllers should not return raw
   database rows when a public response contract exists.

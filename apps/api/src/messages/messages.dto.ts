@@ -1,8 +1,7 @@
 import { createZodDto } from "nestjs-zod";
 import { z } from "zod";
-import { MessageRow } from "../database/schemas";
 
-const CreateMessageSchema = z
+const createMessageSchema = z
   .object({
     content: z
       .string()
@@ -10,29 +9,4 @@ const CreateMessageSchema = z
   })
   .strict();
 
-export class CreateMessageDto extends createZodDto(CreateMessageSchema) {}
-
-export interface CreateTextMessageTurnInput {
-  user: {
-    role: "user";
-    content: string;
-  };
-  assistant: {
-    role: "assistant";
-    content: string;
-  };
-}
-
-export interface MessageTurn {
-  userMessage: MessageRow;
-  assistantMessage: MessageRow;
-}
-
-export interface MessageResponse {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  createdAt: string;
-}
-
-export type MessageTurnResponse = [userMessage: MessageResponse, assistantMessage: MessageResponse];
+export class CreateMessageDto extends createZodDto(createMessageSchema) {}

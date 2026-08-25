@@ -39,6 +39,8 @@ Updated: 2026-08-25
   persistence and invalid-timezone rejection.
 - The message timeline stores either text or an assistant Event Card JSON
   snapshot. PostgreSQL enforces valid `kind`, `content`, and `payload` shapes.
+- `MessagesService` validates Event Card payloads before persistence, and
+  message history maps text and Event Card rows through a discriminated response.
 - Database invariant tests share one transaction helper and roll back each test
   on the same PostgreSQL connection.
 - Vitest loads the API environment once per test worker through `test/setup.ts`.
@@ -53,17 +55,14 @@ Phase 2, Structured Event Extraction, is in progress.
 
 ## Next slice
 
-Not approved yet. Add the application Event Card boundary: a validated payload,
-an explicit repository write method, and a discriminated history response.
-Do not connect the Event Agent workflow in the same slice.
+Not selected yet. The Event Card application boundary is implemented in the
+working tree and awaits verification. It is not connected to the Event Agent
+workflow.
 
 ## Known follow-ups
 
 - Existing AI SDK dependencies are unused and should be removed in an approved
   cleanup slice.
-- `MessagesRepository` currently imports internal turn types from the HTTP DTO
-  file. Move those types to the feature's internal boundary when message flow is
-  changed.
 - The user reported migration, API tests, typecheck, lint, build, and Drizzle
   checks passing. Codex did not rerun them.
 

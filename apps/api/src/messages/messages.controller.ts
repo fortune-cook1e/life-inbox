@@ -1,17 +1,25 @@
 import { Body, Controller, Get, Post } from "@nestjs/common";
 
-import { CreateMessageDto, MessageResponse, MessageTurnResponse } from "./messages.dto";
+import { CreateMessageDto } from "./messages.dto";
+import { toMessageResponse, toTextMessageResponse } from "./messages.mapper";
 import { MessagesService } from "./messages.service";
-import { toMessageResponse } from "./messages.mapper";
+import type {
+  MessageResponse,
+  TextMessageTurnResponse,
+} from "./messages.types";
 
 @Controller("messages")
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
   @Post()
-  async createMessage(@Body() input: CreateMessageDto): Promise<MessageTurnResponse> {
+  async createMessage(@Body() input: CreateMessageDto): Promise<TextMessageTurnResponse> {
     const turn = await this.messagesService.createTextTurn(input.content);
-    return [toMessageResponse(turn.userMessage), toMessageResponse(turn.assistantMessage)];
+
+    return [
+      toTextMessageResponse(turn.userMessage),
+      toTextMessageResponse(turn.assistantMessage),
+    ];
   }
 
   @Get()
