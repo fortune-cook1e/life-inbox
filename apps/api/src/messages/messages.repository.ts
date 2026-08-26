@@ -3,11 +3,7 @@ import { asc } from "drizzle-orm";
 
 import { DatabaseService } from "../database/database.service";
 import { messages, type MessageRow } from "../database/schemas";
-import type {
-  CreateTextMessageTurnInput,
-  EventCardPayload,
-  TextMessageTurn,
-} from "./messages.types";
+import type { EventCardPayload } from "./messages.types";
 
 interface CreateTextMessageRecord {
   role: MessageRow["role"];
@@ -34,39 +30,6 @@ export class MessagesRepository {
     }
 
     return message;
-  }
-
-  async createTextTurn(input: CreateTextMessageTurnInput): Promise<TextMessageTurn> {
-    const insertedMessages = await this.database.db
-      .insert(messages)
-      .values([
-        {
-          role: "user",
-          kind: "text",
-          content: input.userContent,
-          payload: null,
-        },
-        {
-          role: "assistant",
-          kind: "text",
-          content: input.assistantContent,
-          payload: null,
-        },
-      ])
-      .returning();
-
-    const userMessage = insertedMessages.find((message) => message.role === "user");
-
-    const assistantMessage = insertedMessages.find((message) => message.role === "assistant");
-
-    if (userMessage === undefined || assistantMessage === undefined) {
-      throw new Error("Message turn insert did not return both messages.");
-    }
-
-    return {
-      userMessage,
-      assistantMessage,
-    };
   }
 
   async createEventCardMessage(payload: EventCardPayload): Promise<MessageRow> {

@@ -3,9 +3,11 @@ import { eq, inArray } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
 
+import { EventAgentService } from "../src/agents/event-agent/event-agent.service";
 import { DatabaseModule } from "../src/database/database.module";
 import { DatabaseService } from "../src/database/database.service";
 import { messages, type MessageRow } from "../src/database/schemas";
+import { EventsService } from "../src/events/events.service";
 import { toMessageResponse } from "../src/messages/messages.mapper";
 import { MessagesRepository } from "../src/messages/messages.repository";
 import type { EventCardPayload } from "../src/messages/messages.types";
@@ -48,6 +50,14 @@ describe("Event Card message application boundary", () => {
         {
           provide: MessagesRepository,
           useValue: messagesRepository,
+        },
+        {
+          provide: EventAgentService,
+          useValue: {},
+        },
+        {
+          provide: EventsService,
+          useValue: {},
         },
       ],
     }).compile();
@@ -127,7 +137,18 @@ describe("Event Card message persistence", () => {
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [DatabaseModule],
-      providers: [MessagesService, MessagesRepository],
+      providers: [
+        MessagesService,
+        MessagesRepository,
+        {
+          provide: EventAgentService,
+          useValue: {},
+        },
+        {
+          provide: EventsService,
+          useValue: {},
+        },
+      ],
     }).compile();
 
     database = moduleRef.get(DatabaseService);

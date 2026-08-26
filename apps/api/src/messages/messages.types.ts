@@ -27,16 +27,6 @@ export const eventCardPayloadSchema = z
 
 export type EventCardPayload = z.infer<typeof eventCardPayloadSchema>;
 
-export interface CreateTextMessageTurnInput {
-  userContent: string;
-  assistantContent: string;
-}
-
-export interface TextMessageTurn {
-  userMessage: MessageRow;
-  assistantMessage: MessageRow;
-}
-
 export interface TextMessageResponse {
   id: string;
   role: "user" | "assistant";
@@ -55,7 +45,12 @@ export interface EventCardMessageResponse {
 
 export type MessageResponse = TextMessageResponse | EventCardMessageResponse;
 
-export type TextMessageTurnResponse = [
+export interface MessageTurn {
+  userMessage: MessageRow;
+  assistantMessage: MessageRow;
+}
+
+export type MessageTurnResponse = [
   userMessage: TextMessageResponse,
-  assistantMessage: TextMessageResponse,
+  assistantMessage: MessageResponse,
 ];

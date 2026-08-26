@@ -1,31 +1,58 @@
 import { Injectable } from "@nestjs/common";
 
+import { EventAgentService } from "../agents/event-agent/event-agent.service";
 import type { MessageRow } from "../database/schemas";
+import { EventsService } from "../events/events.service";
+import type { CreateMessageDto } from "./messages.dto";
 import { MessagesRepository } from "./messages.repository";
 import {
   eventCardPayloadSchema,
   type EventCardPayload,
-  type TextMessageTurn,
+  type MessageTurn,
 } from "./messages.types";
 
 @Injectable()
 export class MessagesService {
-  constructor(private readonly messagesRepository: MessagesRepository) {}
+  constructor(
+    private readonly messagesRepository: MessagesRepository,
+    private readonly eventAgentService: EventAgentService,
+    private readonly eventsService: EventsService,
+  ) {}
 
-  async createUserTextMessage(content: string): Promise<MessageRow> {
-    return this.messagesRepository.createTextMessage({
+  async createMessage(input: CreateMessageDto): Promise<MessageTurn> {
+    const userMessage = await this.messagesRepository.createTextMessage({
       role: "user",
-      content,
+      content: input.content,
     });
-  }
 
-  async createTextTurn(content: string): Promise<TextMessageTurn> {
-    const assistantContent = `Received: ${content}`;
-
-    return this.messagesRepository.createTextTurn({
-      userContent: content,
-      assistantContent,
+    const agentResult = await this.eventAgentService.extractEvent({
+      content: input.content,
+      currentDateTime: new Date().toISOString(),
+      userTimezone: input.timezone,
     });
+
+    if (agentResult.kind === "text") {
+      const assistantMessage = await this.messagesRepository.createTextMessage({
+        role: "assistant",
+        content: agentResult.response,
+      });
+
+      return {
+        userMessage,
+        assistantMessage,
+      };
+    }
+
+    const { eventCardMessage } = await this.eventsService.createPendingDraftWithInitialCard({
+      sourceMessageId: userMessage.id,
+      defaultTimezone: input.timezone,
+      event: agentResult.event,
+    });
+
+    return {
+      userMessage,
+      assistantMessage: eventCardMessage,
+    };
   }
 
   async createEventCardMessage(payload: EventCardPayload): Promise<MessageRow> {

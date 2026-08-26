@@ -3,7 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { DatabaseService } from "../database/database.service";
 import { eventDrafts, type EventDraftRow, type NewEventDraftRow } from "../database/schemas";
 
-type CreateEventDraftRecord = Pick<
+export type CreateEventDraftRecord = Pick<
   NewEventDraftRow,
   | "sourceMessageId"
   | "status"

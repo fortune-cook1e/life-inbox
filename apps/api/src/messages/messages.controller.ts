@@ -5,7 +5,7 @@ import { toMessageResponse, toTextMessageResponse } from "./messages.mapper";
 import { MessagesService } from "./messages.service";
 import type {
   MessageResponse,
-  TextMessageTurnResponse,
+  MessageTurnResponse,
 } from "./messages.types";
 
 @Controller("messages")
@@ -13,12 +13,12 @@ export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
   @Post()
-  async createMessage(@Body() input: CreateMessageDto): Promise<TextMessageTurnResponse> {
-    const turn = await this.messagesService.createTextTurn(input.content);
+  async createMessage(@Body() input: CreateMessageDto): Promise<MessageTurnResponse> {
+    const turn = await this.messagesService.createMessage(input);
 
     return [
       toTextMessageResponse(turn.userMessage),
-      toTextMessageResponse(turn.assistantMessage),
+      toMessageResponse(turn.assistantMessage),
     ];
   }
 

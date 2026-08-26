@@ -9,3 +9,7 @@ export function isValidTimeZone(value: string): boolean {
     return false;
   }
 }
+
+export function normalizeLocalDateTime(value: string | null): string | null {
+  return value?.replace(" ", "T") ?? null;
+}
