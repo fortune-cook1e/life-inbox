@@ -1,6 +1,6 @@
 # LifeInbox Handoff
 
-Updated: 2026-08-25
+Updated: 2026-08-26
 
 ## Scope and working agreement
 
@@ -23,7 +23,8 @@ Updated: 2026-08-25
 - `HealthModule` exposes `GET /health`.
 - Global request validation uses `ZodValidationPipe` through `APP_PIPE`.
 - `MessagesModule` exposes `POST /messages` and `GET /messages`.
-- `POST /messages` persists a user message and deterministic assistant reply.
+- `POST /messages` persists user input and runs the fixed Event extraction
+  workflow using the request timezone and backend-owned current time.
 - `GET /messages` returns persisted history ordered by backend-generated
   `sequence`.
 - `EventAgentService` owns prompt/schema composition and receives its model
@@ -41,6 +42,10 @@ Updated: 2026-08-25
   snapshot. PostgreSQL enforces valid `kind`, `content`, and `payload` shapes.
 - `MessagesService` validates Event Card payloads before persistence, and
   message history maps text and Event Card rows through a discriminated response.
+- The fixed message workflow persists user input, invokes `EventAgentService`,
+  and routes text results or Event results without an Agent loop.
+- `EventIntakeRepository` atomically creates a pending Event Draft and its
+  initial Event Card in one internal Drizzle transaction.
 - Database invariant tests share one transaction helper and roll back each test
   on the same PostgreSQL connection.
 - Vitest loads the API environment once per test worker through `test/setup.ts`.
@@ -55,9 +60,9 @@ Phase 2, Structured Event Extraction, is in progress.
 
 ## Next slice
 
-Not selected yet. The Event Card application boundary is implemented in the
-working tree and awaits verification. It is not connected to the Event Agent
-workflow.
+Implemented in the working tree and awaiting verification. `POST /messages`
+accepts an IANA timezone, uses backend-owned current time, and routes the fixed
+Event extraction result to assistant text or atomic Draft-plus-Card persistence.
 
 ## Known follow-ups
 
