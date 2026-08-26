@@ -1,4 +1,5 @@
 import { fakeModel } from "@langchain/core/testing";
+import { API_SUCCESS_CODE, API_SUCCESS_MESSAGE } from "@life-inbox/shared";
 import type { INestApplication } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import { afterEach, describe, expect, it } from "vitest";
@@ -28,13 +29,19 @@ describe("GET /health", () => {
       logger: false,
     });
 
+    app.setGlobalPrefix("api");
+
     await app.listen(0, "127.0.0.1");
 
-    const response = await fetch(`${await app.getUrl()}/health`);
+    const response = await fetch(`${await app.getUrl()}/api/health`);
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      status: "ok",
+      code: API_SUCCESS_CODE,
+      data: {
+        status: "ok",
+      },
+      message: API_SUCCESS_MESSAGE,
     });
   });
 });
