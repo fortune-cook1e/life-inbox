@@ -12,9 +12,15 @@ maintainability, observability, security, and reviewable changes.
 - This API is both a product backend and a project-driven NestJS learning
   environment.
 - Provide complete reference code and explain the important NestJS design
-  decisions. The user handwrites the implementation.
-- Do not edit API source files or run verification commands unless the user
-  explicitly asks for that action.
+  decisions. The user handwrites production and feature implementation unless
+  they explicitly authorize Codex to implement it.
+- Once a test scope is approved, Codex may add or modify unit, integration, and
+  end-to-end test files directly without asking for a separate confirmation.
+  Report exactly which tests were changed. This permission does not extend to
+  production or feature implementation.
+- Do not edit production API source files or run verification commands unless
+  the user explicitly asks for that action. Directly editing approved test
+  files is the exception described above.
 - For each non-trivial slice, explain module ownership, dependency direction,
   the main invariant, the meaningful trade-off, and one important failure
   scenario.
@@ -135,6 +141,12 @@ of decision before presenting future code.
     layer, keep it close to that layer.
 - Repositories should not import HTTP DTOs. Controllers should not return raw
   database rows when a public response contract exists.
+- Name a repository after its real persistence boundary. A single-entity
+  repository should not quietly coordinate unrelated tables; a required
+  cross-table transaction should use a capability-specific name such as
+  `*IntakeRepository` or `*TransitionsRepository`.
+- Do not keep an alternate production write path solely to make a test easier.
+  Tests should exercise the same atomic path used by the application.
 - `DatabaseModule` owns the PostgreSQL pool, Drizzle client, and connection
   lifecycle. It is not global. Feature modules import it explicitly.
 - Keep all Drizzle schemas, enums, relations, and indexes under
@@ -156,6 +168,11 @@ of decision before presenting future code.
   explained adapter boundary.
 - Do not expose database or framework errors directly.
 - Preserve the established HTTP response and error contract.
+- Keep application errors independent of Nest HTTP exceptions. Feature-specific
+  errors may extend a common application error category that the HTTP filter
+  maps; common HTTP infrastructure must not import feature modules.
+- A feature owns the response contracts and mappers for its HTTP actions.
+  Timeline aggregation may depend on those feature contracts, not the reverse.
 - When structured logging and the public error envelope are introduced,
   propagate one request ID through both. Do not add that infrastructure to an
   unrelated slice.
@@ -211,8 +228,9 @@ until a concrete requirement and failure scenario justify them.
 
 Use test-first development when a slice changes core business behavior:
 
-1. Provide the complete reference test before implementation code.
-2. The user handwrites and runs the test.
+1. Add the complete approved test directly to the codebase before implementation
+   code and tell the user what was added.
+2. The user runs the test unless they explicitly authorize Codex to run it.
 3. Confirm that it fails for the expected business reason.
 4. Only then provide the slice implementation.
 5. Run the focused test again after implementation.
@@ -236,6 +254,11 @@ not need every test type below:
 - end-to-end tests for important HTTP contracts;
 - one failure-path test for the main risk;
 - regression tests for fixed bugs.
+
+Organize tests around a business capability or invariant, not one file per
+controller method, endpoint, mapper, or helper. Keep related state transitions
+in one lifecycle suite, and do not repeat the same behavior at multiple test
+layers unless each layer protects a distinct risk.
 
 Use deterministic model doubles in normal tests. Do not consume paid model
 credits during routine verification.
