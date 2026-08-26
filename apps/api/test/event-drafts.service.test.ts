@@ -6,14 +6,15 @@ import { DatabaseModule } from "../src/database/database.module";
 import { DatabaseService } from "../src/database/database.service";
 import { eventDrafts, messages } from "../src/database/schemas";
 import { EventsModule } from "../src/events/events.module";
-import { EventsService } from "../src/events/events.service";
+import { EventDraftsService } from "../src/events/event-drafts.service";
 
-describe("EventsService", () => {
+describe("EventDraftsService", () => {
   let moduleRef: TestingModule | undefined;
   let database: DatabaseService;
-  let eventsService: EventsService;
+  let eventDraftsService: EventDraftsService;
 
   const sourceMessageIds: string[] = [];
+  const createdMessageIds: string[] = [];
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
@@ -21,7 +22,7 @@ describe("EventsService", () => {
     }).compile();
 
     database = moduleRef.get(DatabaseService);
-    eventsService = moduleRef.get(EventsService);
+    eventDraftsService = moduleRef.get(EventDraftsService);
   });
 
   afterEach(async () => {
@@ -33,9 +34,10 @@ describe("EventsService", () => {
       .delete(eventDrafts)
       .where(inArray(eventDrafts.sourceMessageId, sourceMessageIds));
 
-    await database.db.delete(messages).where(inArray(messages.id, sourceMessageIds));
+    await database.db.delete(messages).where(inArray(messages.id, createdMessageIds));
 
     sourceMessageIds.length = 0;
+    createdMessageIds.length = 0;
   });
 
   afterAll(async () => {
@@ -59,6 +61,7 @@ describe("EventsService", () => {
     }
 
     sourceMessageIds.push(message.id);
+    createdMessageIds.push(message.id);
 
     return message.id;
   }
@@ -66,7 +69,7 @@ describe("EventsService", () => {
   it("creates a pending Event Draft using the default timezone", async () => {
     const sourceMessageId = await createSourceMessage("Meet Anna tomorrow at 3 PM.");
 
-    const draft = await eventsService.createPendingDraft({
+    const result = await eventDraftsService.createPendingDraftWithInitialCard({
       sourceMessageId,
       defaultTimezone: "Europe/Stockholm",
       event: {
@@ -78,6 +81,8 @@ describe("EventsService", () => {
         description: null,
       },
     });
+    const draft = result.draft;
+    createdMessageIds.push(result.eventCardMessage.id);
 
     expect(draft).toMatchObject({
       sourceMessageId,
@@ -104,7 +109,7 @@ describe("EventsService", () => {
     const sourceMessageId = await createSourceMessage("Meet Anna tomorrow at 3 PM Mars time.");
 
     await expect(
-      eventsService.createPendingDraft({
+      eventDraftsService.createPendingDraftWithInitialCard({
         sourceMessageId,
         defaultTimezone: "Europe/Stockholm",
         event: {

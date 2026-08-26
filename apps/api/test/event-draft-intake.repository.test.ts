@@ -6,12 +6,12 @@ import { ZodError } from "zod";
 import { DatabaseModule } from "../src/database/database.module";
 import { DatabaseService } from "../src/database/database.service";
 import { eventDrafts, messages } from "../src/database/schemas";
-import { EventIntakeRepository } from "../src/events/event-intake.repository";
+import { EventDraftIntakeRepository } from "../src/events/event-draft-intake.repository";
 
-describe("EventIntakeRepository", () => {
+describe("EventDraftIntakeRepository", () => {
   let moduleRef: TestingModule | undefined;
   let database: DatabaseService;
-  let repository: EventIntakeRepository;
+  let repository: EventDraftIntakeRepository;
 
   const createdMessageIds: string[] = [];
   const createdDraftIds: string[] = [];
@@ -19,11 +19,11 @@ describe("EventIntakeRepository", () => {
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [DatabaseModule],
-      providers: [EventIntakeRepository],
+      providers: [EventDraftIntakeRepository],
     }).compile();
 
     database = moduleRef.get(DatabaseService);
-    repository = moduleRef.get(EventIntakeRepository);
+    repository = moduleRef.get(EventDraftIntakeRepository);
   });
 
   afterEach(async () => {
@@ -71,7 +71,6 @@ describe("EventIntakeRepository", () => {
 
     const result = await repository.createPendingDraftWithInitialCard({
       sourceMessageId,
-      status: "pending",
       title: "Meet Anna",
       startAt: "2026-08-27T15:00:00",
       endAt: null,
@@ -105,7 +104,6 @@ describe("EventIntakeRepository", () => {
     await expect(
       repository.createPendingDraftWithInitialCard({
         sourceMessageId,
-        status: "pending",
         title: "Meet Anna",
         startAt: "2026-08-27T15:00:00",
         endAt: null,

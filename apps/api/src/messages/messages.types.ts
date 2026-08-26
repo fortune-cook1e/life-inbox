@@ -1,31 +1,15 @@
-import { z } from "zod";
 import type { MessageRow } from "../database/schemas";
-import { isValidTimeZone } from "../utils/utils";
+import type {
+  EventCardMessageResponse,
+  EventConfirmMessageResponse,
+  EventEditMessageResponse,
+  EventRejectMessageResponse,
+} from "../events/event-drafts.types";
 
-const localDateTimeSchema = z.iso
-  .datetime({
-    local: true,
-    precision: 0,
-  })
-  .refine((value) => !value.endsWith("Z"), {
-    message: "Event Card datetime must not include timezone information.",
-  });
-
-export const eventCardPayloadSchema = z
-  .object({
-    draftId: z.uuid(),
-    title: z.string().nullable(),
-    startAt: localDateTimeSchema.nullable(),
-    endAt: localDateTimeSchema.nullable(),
-    timezone: z.string().trim().min(1).refine(isValidTimeZone, {
-      message: "Invalid Event Card timezone.",
-    }),
-    location: z.string().nullable(),
-    description: z.string().nullable(),
-  })
-  .strict();
-
-export type EventCardPayload = z.infer<typeof eventCardPayloadSchema>;
+export interface CreateMessageInput {
+  content: string;
+  timezone: string;
+}
 
 export interface TextMessageResponse {
   id: string;
@@ -35,15 +19,15 @@ export interface TextMessageResponse {
   createdAt: string;
 }
 
-export interface EventCardMessageResponse {
-  id: string;
-  role: "assistant";
-  kind: "event_card";
-  payload: EventCardPayload;
-  createdAt: string;
-}
+export type MessageResponse =
+  | TextMessageResponse
+  | EventCardMessageResponse
+  | EventEditMessageResponse
+  | EventConfirmMessageResponse
+  | EventRejectMessageResponse;
 
-export type MessageResponse = TextMessageResponse | EventCardMessageResponse;
+export type AssistantTurnMessageResponse =
+  (TextMessageResponse & { role: "assistant" }) | EventCardMessageResponse;
 
 export interface MessageTurn {
   userMessage: MessageRow;
@@ -51,6 +35,6 @@ export interface MessageTurn {
 }
 
 export type MessageTurnResponse = [
-  userMessage: TextMessageResponse,
-  assistantMessage: MessageResponse,
+  userMessage: TextMessageResponse & { role: "user" },
+  assistantMessage: AssistantTurnMessageResponse,
 ];

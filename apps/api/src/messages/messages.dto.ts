@@ -1,6 +1,6 @@
 import { createZodDto } from "nestjs-zod";
 import { z } from "zod";
-import { isValidTimeZone } from "../utils/utils";
+import { isValidTimeZone } from "../common/time";
 
 const createMessageSchema = z
   .object({

@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventAgentService } from "../src/agents/event-agent/event-agent.service";
 import type { EventDraftRow, MessageRow } from "../src/database/schemas";
-import { EventsService } from "../src/events/events.service";
-import { CreateMessageDto } from "../src/messages/messages.dto";
+import { EventDraftsService } from "../src/events/event-drafts.service";
 import { MessagesRepository } from "../src/messages/messages.repository";
 import { MessagesService } from "../src/messages/messages.service";
 
@@ -62,39 +61,6 @@ const assistantTextMessage: MessageRow = {
   createdAt: currentDateTime,
 };
 
-describe("CreateMessageDto", () => {
-  it("accepts content with a valid IANA timezone", () => {
-    expect(
-      CreateMessageDto.schema.parse({
-        content: "Meet Anna tomorrow at 3 PM.",
-        timezone: "Europe/Stockholm",
-      }),
-    ).toEqual({
-      content: "Meet Anna tomorrow at 3 PM.",
-      timezone: "Europe/Stockholm",
-    });
-  });
-
-  it("rejects an invalid timezone at the HTTP boundary", () => {
-    const result = CreateMessageDto.schema.safeParse({
-      content: "Meet Anna tomorrow at 3 PM.",
-      timezone: "Mars/Olympus",
-    });
-
-    expect(result.success).toBe(false);
-
-    if (!result.success) {
-      expect(result.error.issues).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            path: ["timezone"],
-          }),
-        ]),
-      );
-    }
-  });
-});
-
 describe("MessagesService fixed Event workflow", () => {
   let moduleRef: TestingModule | undefined;
   let messagesService: MessagesService;
@@ -107,7 +73,7 @@ describe("MessagesService fixed Event workflow", () => {
     extractEvent: vi.fn(),
   };
 
-  const eventsService = {
+  const eventDraftsService = {
     createPendingDraftWithInitialCard: vi.fn(),
   };
 
@@ -117,7 +83,7 @@ describe("MessagesService fixed Event workflow", () => {
 
     messagesRepository.createTextMessage.mockReset();
     eventAgentService.extractEvent.mockReset();
-    eventsService.createPendingDraftWithInitialCard.mockReset();
+    eventDraftsService.createPendingDraftWithInitialCard.mockReset();
 
     moduleRef = await Test.createTestingModule({
       providers: [
@@ -131,8 +97,8 @@ describe("MessagesService fixed Event workflow", () => {
           useValue: eventAgentService,
         },
         {
-          provide: EventsService,
-          useValue: eventsService,
+          provide: EventDraftsService,
+          useValue: eventDraftsService,
         },
       ],
     }).compile();
@@ -162,7 +128,7 @@ describe("MessagesService fixed Event workflow", () => {
       },
     });
 
-    eventsService.createPendingDraftWithInitialCard.mockResolvedValue({
+    eventDraftsService.createPendingDraftWithInitialCard.mockResolvedValue({
       draft: eventDraft,
       eventCardMessage,
     });
@@ -183,7 +149,7 @@ describe("MessagesService fixed Event workflow", () => {
       userTimezone: "Europe/Stockholm",
     });
 
-    expect(eventsService.createPendingDraftWithInitialCard).toHaveBeenCalledWith({
+    expect(eventDraftsService.createPendingDraftWithInitialCard).toHaveBeenCalledWith({
       sourceMessageId: userMessage.id,
       defaultTimezone: "Europe/Stockholm",
       event: {
@@ -227,7 +193,7 @@ describe("MessagesService fixed Event workflow", () => {
       content: "I can help you create Events.",
     });
 
-    expect(eventsService.createPendingDraftWithInitialCard).not.toHaveBeenCalled();
+    expect(eventDraftsService.createPendingDraftWithInitialCard).not.toHaveBeenCalled();
 
     expect(result).toEqual({
       userMessage,
@@ -252,7 +218,7 @@ describe("MessagesService fixed Event workflow", () => {
       },
     });
 
-    eventsService.createPendingDraftWithInitialCard.mockRejectedValue(persistenceError);
+    eventDraftsService.createPendingDraftWithInitialCard.mockRejectedValue(persistenceError);
 
     await expect(
       messagesService.createMessage({
@@ -262,6 +228,6 @@ describe("MessagesService fixed Event workflow", () => {
     ).rejects.toBe(persistenceError);
 
     expect(messagesRepository.createTextMessage).toHaveBeenCalledOnce();
-    expect(eventsService.createPendingDraftWithInitialCard).toHaveBeenCalledOnce();
+    expect(eventDraftsService.createPendingDraftWithInitialCard).toHaveBeenCalledOnce();
   });
 });

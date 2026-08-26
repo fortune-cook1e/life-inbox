@@ -1,25 +1,19 @@
 import { Injectable } from "@nestjs/common";
 
 import { EventAgentService } from "../agents/event-agent/event-agent.service";
-import type { MessageRow } from "../database/schemas";
-import { EventsService } from "../events/events.service";
-import type { CreateMessageDto } from "./messages.dto";
+import { EventDraftsService } from "../events/event-drafts.service";
 import { MessagesRepository } from "./messages.repository";
-import {
-  eventCardPayloadSchema,
-  type EventCardPayload,
-  type MessageTurn,
-} from "./messages.types";
+import type { CreateMessageInput, MessageTurn } from "./messages.types";
 
 @Injectable()
 export class MessagesService {
   constructor(
     private readonly messagesRepository: MessagesRepository,
     private readonly eventAgentService: EventAgentService,
-    private readonly eventsService: EventsService,
+    private readonly eventDraftsService: EventDraftsService,
   ) {}
 
-  async createMessage(input: CreateMessageDto): Promise<MessageTurn> {
+  async createMessage(input: CreateMessageInput): Promise<MessageTurn> {
     const userMessage = await this.messagesRepository.createTextMessage({
       role: "user",
       content: input.content,
@@ -43,7 +37,7 @@ export class MessagesService {
       };
     }
 
-    const { eventCardMessage } = await this.eventsService.createPendingDraftWithInitialCard({
+    const { eventCardMessage } = await this.eventDraftsService.createPendingDraftWithInitialCard({
       sourceMessageId: userMessage.id,
       defaultTimezone: input.timezone,
       event: agentResult.event,
@@ -55,13 +49,7 @@ export class MessagesService {
     };
   }
 
-  async createEventCardMessage(payload: EventCardPayload): Promise<MessageRow> {
-    const validatedPayload = eventCardPayloadSchema.parse(payload);
-
-    return this.messagesRepository.createEventCardMessage(validatedPayload);
-  }
-
-  async getHistory(): Promise<MessageRow[]> {
+  async getHistory() {
     return this.messagesRepository.findAll();
   }
 }

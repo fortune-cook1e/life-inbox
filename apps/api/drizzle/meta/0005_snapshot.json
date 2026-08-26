@@ -1,0 +1,342 @@
+{
+  "id": "a116553c-e321-4874-a866-f80599b5fd25",
+  "prevId": "8964787c-cebf-411a-989a-c7a54ae4d749",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.messages": {
+      "name": "messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "messages_sequence_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "role": {
+          "name": "role",
+          "type": "message_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "message_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'text'"
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "messages_sequence_unique": {
+          "name": "messages_sequence_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "sequence"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "messages_content_payload_shape_check": {
+          "name": "messages_content_payload_shape_check",
+          "value": "\n    (\n      \"messages\".\"kind\" = 'text'\n      AND \"messages\".\"content\" IS NOT NULL\n      AND length(btrim(\"messages\".\"content\")) > 0\n      AND \"messages\".\"payload\" IS NULL\n    )\n    OR\n    (\n      \"messages\".\"kind\" = 'event_card'\n      AND \"messages\".\"role\" = 'assistant'\n      AND \"messages\".\"content\" IS NULL\n      AND \"messages\".\"payload\" IS NOT NULL\n      AND jsonb_typeof(\"messages\".\"payload\") = 'object'\n    )\n    OR\n    (\n      \"messages\".\"kind\" = 'event_edit'\n      AND \"messages\".\"role\" = 'user'\n      AND \"messages\".\"content\" IS NULL\n      AND \"messages\".\"payload\" IS NOT NULL\n      AND jsonb_typeof(\"messages\".\"payload\") = 'object'\n      AND \"messages\".\"payload\" ? 'draftId'\n      AND jsonb_typeof(\"messages\".\"payload\" -> 'draftId') = 'string'\n    )\n    OR\n    (\n      \"messages\".\"kind\" = 'event_confirm'\n      AND \"messages\".\"role\" = 'user'\n      AND \"messages\".\"content\" IS NULL\n      AND \"messages\".\"payload\" IS NOT NULL\n      AND jsonb_typeof(\"messages\".\"payload\") = 'object'\n      AND \"messages\".\"payload\" ? 'draftId'\n      AND jsonb_typeof(\"messages\".\"payload\" -> 'draftId') = 'string'\n      AND \"messages\".\"payload\" ? 'eventId'\n      AND jsonb_typeof(\"messages\".\"payload\" -> 'eventId') = 'string'\n    )\n    OR\n    (\n      \"messages\".\"kind\" = 'event_reject'\n      AND \"messages\".\"role\" = 'user'\n      AND \"messages\".\"content\" IS NULL\n      AND \"messages\".\"payload\" IS NOT NULL\n      AND jsonb_typeof(\"messages\".\"payload\") = 'object'\n      AND \"messages\".\"payload\" ? 'draftId'\n      AND jsonb_typeof(\"messages\".\"payload\" -> 'draftId') = 'string'\n    )\n  "
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.event_drafts": {
+      "name": "event_drafts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_message_id": {
+          "name": "source_message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "event_draft_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_at": {
+          "name": "start_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_at": {
+          "name": "end_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "event_drafts_source_message_id_messages_id_fk": {
+          "name": "event_drafts_source_message_id_messages_id_fk",
+          "tableFrom": "event_drafts",
+          "tableTo": "messages",
+          "columnsFrom": [
+            "source_message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "event_drafts_source_message_id_unique": {
+          "name": "event_drafts_source_message_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "source_message_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.events": {
+      "name": "events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_draft_id": {
+          "name": "source_draft_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_at": {
+          "name": "start_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_at": {
+          "name": "end_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "events_source_draft_id_event_drafts_id_fk": {
+          "name": "events_source_draft_id_event_drafts_id_fk",
+          "tableFrom": "events",
+          "tableTo": "event_drafts",
+          "columnsFrom": [
+            "source_draft_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "events_source_draft_id_unique": {
+          "name": "events_source_draft_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "source_draft_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "events_title_not_blank_check": {
+          "name": "events_title_not_blank_check",
+          "value": "length(btrim(\"events\".\"title\")) > 0"
+        },
+        "events_timezone_not_blank_check": {
+          "name": "events_timezone_not_blank_check",
+          "value": "length(btrim(\"events\".\"timezone\")) > 0"
+        },
+        "events_time_order_check": {
+          "name": "events_time_order_check",
+          "value": "\"events\".\"end_at\" IS NULL OR \"events\".\"end_at\" >= \"events\".\"start_at\""
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.message_kind": {
+      "name": "message_kind",
+      "schema": "public",
+      "values": [
+        "text",
+        "event_card",
+        "event_edit",
+        "event_confirm",
+        "event_reject"
+      ]
+    },
+    "public.message_role": {
+      "name": "message_role",
+      "schema": "public",
+      "values": [
+        "user",
+        "assistant"
+      ]
+    },
+    "public.event_draft_status": {
+      "name": "event_draft_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "confirmed",
+        "rejected"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

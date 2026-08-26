@@ -1,25 +1,29 @@
 import { Injectable } from "@nestjs/common";
 
 import { DatabaseService } from "../database/database.service";
-import { eventDrafts, messages, type EventDraftRow, type MessageRow } from "../database/schemas";
-import { eventCardPayloadSchema } from "../messages/messages.types";
-import type { CreateEventDraftRecord } from "./event-drafts.repository";
-import { normalizeLocalDateTime } from "../utils/utils";
-
-export interface EventIntakeResult {
-  draft: EventDraftRow;
-  eventCardMessage: MessageRow;
-}
+import { eventDrafts, messages } from "../database/schemas";
+import { toEventDraftValues } from "./event-drafts.mapper";
+import {
+  eventCardPayloadSchema,
+  type CreatePendingEventDraftRecord,
+  type PendingEventDraftCreationResult,
+} from "./event-drafts.types";
 
 @Injectable()
-export class EventIntakeRepository {
+export class EventDraftIntakeRepository {
   constructor(private readonly database: DatabaseService) {}
 
   async createPendingDraftWithInitialCard(
-    input: CreateEventDraftRecord,
-  ): Promise<EventIntakeResult> {
+    input: CreatePendingEventDraftRecord,
+  ): Promise<PendingEventDraftCreationResult> {
     return this.database.db.transaction(async (transaction) => {
-      const [draft] = await transaction.insert(eventDrafts).values(input).returning();
+      const [draft] = await transaction
+        .insert(eventDrafts)
+        .values({
+          ...input,
+          status: "pending",
+        })
+        .returning();
 
       if (draft === undefined) {
         throw new Error("Event Draft insert returned no row.");
@@ -27,12 +31,7 @@ export class EventIntakeRepository {
 
       const payload = eventCardPayloadSchema.parse({
         draftId: draft.id,
-        title: draft.title,
-        startAt: normalizeLocalDateTime(draft.startAt),
-        endAt: normalizeLocalDateTime(draft.endAt),
-        timezone: draft.timezone,
-        location: draft.location,
-        description: draft.description,
+        ...toEventDraftValues(draft),
       });
 
       const [eventCardMessage] = await transaction

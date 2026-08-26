@@ -13,3 +13,13 @@ export function isValidTimeZone(value: string): boolean {
 export function normalizeLocalDateTime(value: string | null): string | null {
   return value?.replace(" ", "T") ?? null;
 }
+
+export function normalizeTimeZone(value: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: value.trim(),
+    }).resolvedOptions().timeZone;
+  } catch {
+    throw new Error("Invalid Event Draft timezone.");
+  }
+}

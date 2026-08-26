@@ -1,13 +1,15 @@
 import { Module } from "@nestjs/common";
 
 import { DatabaseModule } from "../database/database.module";
-import { EventDraftsRepository } from "./event-drafts.repository";
-import { EventIntakeRepository } from "./event-intake.repository";
-import { EventsService } from "./events.service";
+import { EventDraftIntakeRepository } from "./event-draft-intake.repository";
+import { EventDraftTransitionsRepository } from "./event-draft-transitions.repository";
+import { EventDraftsController } from "./event-drafts.controller";
+import { EventDraftsService } from "./event-drafts.service";
 
 @Module({
   imports: [DatabaseModule],
-  providers: [EventDraftsRepository, EventIntakeRepository, EventsService],
-  exports: [EventsService],
+  controllers: [EventDraftsController],
+  providers: [EventDraftIntakeRepository, EventDraftTransitionsRepository, EventDraftsService],
+  exports: [EventDraftsService],
 })
 export class EventsModule {}

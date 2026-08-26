@@ -1,12 +1,13 @@
 import { Body, Controller, Get, Post } from "@nestjs/common";
 
 import { CreateMessageDto } from "./messages.dto";
-import { toMessageResponse, toTextMessageResponse } from "./messages.mapper";
+import {
+  toAssistantTurnMessageResponse,
+  toMessageResponse,
+  toUserTextMessageResponse,
+} from "./messages.mapper";
 import { MessagesService } from "./messages.service";
-import type {
-  MessageResponse,
-  MessageTurnResponse,
-} from "./messages.types";
+import type { MessageResponse, MessageTurnResponse } from "./messages.types";
 
 @Controller("messages")
 export class MessagesController {
@@ -17,8 +18,8 @@ export class MessagesController {
     const turn = await this.messagesService.createMessage(input);
 
     return [
-      toTextMessageResponse(turn.userMessage),
-      toMessageResponse(turn.assistantMessage),
+      toUserTextMessageResponse(turn.userMessage),
+      toAssistantTurnMessageResponse(turn.assistantMessage),
     ];
   }
 

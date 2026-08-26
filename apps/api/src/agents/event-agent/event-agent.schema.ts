@@ -1,13 +1,5 @@
 import { z } from "zod";
-
-function isValidTimeZone(value: string): boolean {
-  try {
-    new Intl.DateTimeFormat(undefined, { timeZone: value }).format();
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { isValidTimeZone } from "../../common/time";
 
 export const eventAgentInputSchema = z
   .object({
