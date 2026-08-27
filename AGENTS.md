@@ -69,6 +69,9 @@ start without requesting another confirmation.
 
 ## Agent rules
 
+- Keep `docs/v1/03-agent-llm-contract.md` synchronized with every change to the
+  Agent's context, action contract, validation boundary, tools, loop limits, or
+  persistence flow.
 - Use bounded Agent loops with explicit stop conditions.
 - The LLM may interpret input, choose tools, ask questions, and propose changes.
 - Backend tools validate every state transition before persistence.

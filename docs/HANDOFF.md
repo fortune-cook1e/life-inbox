@@ -6,8 +6,8 @@ Updated: 2026-08-27
 
 - V1 is Event-only. Email features are out of scope.
 - Current work is backend-only in `apps/api`; frontend work is paused.
-- Build the fixed, single-pass Event extraction workflow first. Add a bounded
-  LangGraph tool loop only after that workflow is complete.
+- The fixed Event extraction workflow is complete. The approved replacement is
+  a bounded LangGraph Tool Calling Agent followed by LangChain HITL.
 - Use the LangChain ecosystem for new LLM work. Do not add AI SDK usage.
 - Codex provides reference code and design explanations; the user handwrites
   production and feature implementation unless direct implementation is
@@ -92,8 +92,17 @@ and timeline interaction atomically.
 
 ## Next slice
 
-Begin Phase 4 by defining the first bounded Event clarification slice, including
-its allowed tools, stop limits, fallback, and one missing-field acceptance case.
+Phase 4 is split into two independently usable slices:
+
+1. Replace fixed extraction with bounded Tool Calling and clarification. Add
+   recent timeline and pending Draft context, `find_incomplete_event_drafts`,
+   `create_event_draft`, `update_event_draft`, strict call limits, and a small
+   opt-in real-model acceptance suite. Keep the current Confirm and Reject HTTP
+   endpoints until this slice is complete.
+2. Add `agent_runs`, a Postgres LangGraph checkpointer, approval/status APIs,
+   and `approve`, `deny`, and `reject_event` decisions. Then remove the public
+   Draft Confirm and Reject endpoints; the resumed Agent run becomes the only
+   public final-transition path.
 
 ## Known follow-ups
 
@@ -103,6 +112,11 @@ its allowed tools, stop limits, fallback, and one missing-field acceptance case.
   rebuild and `0005` only creates `events`. The existing local database already
   has the final schema; no database command was run while consolidating the files.
 - AI SDK dependencies were removed; API LLM code is LangChain-only.
+- LangGraph short-term memory is scoped to one Agent run. Product conversation
+  history remains in `messages`; Draft and Event state remains authoritative in
+  PostgreSQL.
+- Stale approval-preview protection is intentionally deferred for the current
+  single-user V1. A resumed decision acts on the latest valid pending Draft.
 - The current post-review changes have not been run yet. Tests are limited to
   core workflows, business state transitions, transaction rollback, and database
   invariants; duplicate framework, schema-shape, and health wiring tests were
@@ -111,6 +125,7 @@ its allowed tools, stop limits, fallback, and one missing-field acceptance case.
 ## Canonical documents
 
 - `docs/v1/product-scope.md`
+- `docs/v1/03-agent-llm-contract.md`
 - `docs/v1/05-implementation-roadmap.md`
 - `apps/api/AGENTS.md`
 
