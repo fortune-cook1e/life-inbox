@@ -9,10 +9,9 @@ import {
 } from "@nestjs/common";
 import { ApiErrorCode, type ApiErrorEnvelope } from "@life-inbox/shared";
 import { ZodValidationException } from "nestjs-zod";
+import { ZodError } from "zod";
 
-import {
-  ApplicationServiceUnavailableError,
-} from "../errors/application-service-unavailable.error";
+import { ApplicationServiceUnavailableError } from "../errors/application-service-unavailable.error";
 import type { RequestWithId } from "./request-id.middleware";
 
 interface HttpResponse {
@@ -24,7 +23,16 @@ interface HttpResponse {
 interface MappedException {
   statusCode: number;
   code: ApiErrorCode;
+  publicMessage: string;
+  diagnostics: Record<string, unknown>;
+}
+
+interface ErrorDiagnostic {
+  name: string;
   message: string;
+  code?: string | number;
+  status?: string | number;
+  cause?: ErrorDiagnostic;
 }
 
 @Injectable()
@@ -44,7 +52,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const body: ApiErrorEnvelope = {
       code: mapped.code,
       data: null,
-      message: mapped.message,
+      message: mapped.publicMessage,
     };
 
     const logContext = {
@@ -55,10 +63,14 @@ export class ApiExceptionFilter implements ExceptionFilter {
       statusCode: mapped.statusCode,
       errorCode: mapped.code,
       exceptionName: exception instanceof Error ? exception.name : "UnknownException",
+      ...mapped.diagnostics,
     };
 
     if (mapped.statusCode >= 500) {
-      this.logger.error(logContext);
+      this.logger.error(
+        logContext,
+        this.findRootError(exception)?.stack,
+      );
     } else {
       this.logger.warn(logContext);
     }
@@ -72,16 +84,15 @@ export class ApiExceptionFilter implements ExceptionFilter {
       return {
         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
         code: ApiErrorCode.ServiceUnavailable,
-        message: this.messageForStatus(HttpStatus.SERVICE_UNAVAILABLE),
+        publicMessage: exception.publicMessage,
+        diagnostics: {
+          error: this.toErrorDiagnostic(exception),
+        },
       };
     }
 
     if (exception instanceof ZodValidationException) {
-      return {
-        statusCode: HttpStatus.BAD_REQUEST,
-        code: ApiErrorCode.ValidationError,
-        message: "Request validation failed.",
-      };
+      return this.mapValidationException(exception);
     }
 
     if (exception instanceof HttpException) {
@@ -90,15 +101,135 @@ export class ApiExceptionFilter implements ExceptionFilter {
       return {
         statusCode,
         code: this.codeForStatus(statusCode),
-        message: this.messageForStatus(statusCode),
+        publicMessage: this.publicMessageForHttpException(exception),
+        diagnostics: {
+          error: this.toErrorDiagnostic(exception),
+        },
       };
     }
 
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       code: ApiErrorCode.InternalError,
-      message: "An unexpected error occurred.",
+      publicMessage: "An unexpected error occurred.",
+      diagnostics: {
+        error:
+          exception instanceof Error
+            ? this.toErrorDiagnostic(exception)
+            : {
+                name: "NonErrorThrownValue",
+                message: "A non-Error value was thrown.",
+              },
+      },
     };
+  }
+
+  private toErrorDiagnostic(error: Error, depth = 0): ErrorDiagnostic {
+    const errorRecord = error as Error & {
+      code?: unknown;
+      status?: unknown;
+    };
+
+    const diagnostic: ErrorDiagnostic = {
+      name: error.name,
+      message: error.message,
+    };
+
+    if (typeof errorRecord.code === "string" || typeof errorRecord.code === "number") {
+      diagnostic.code = errorRecord.code;
+    }
+
+    if (typeof errorRecord.status === "string" || typeof errorRecord.status === "number") {
+      diagnostic.status = errorRecord.status;
+    }
+
+    if (depth < 4 && error.cause instanceof Error) {
+      diagnostic.cause = this.toErrorDiagnostic(error.cause, depth + 1);
+    }
+
+    return diagnostic;
+  }
+
+  private findRootError(error: unknown): Error | undefined {
+    if (!(error instanceof Error)) {
+      return undefined;
+    }
+
+    let root = error;
+    let depth = 0;
+
+    while (depth < 4 && root.cause instanceof Error) {
+      root = root.cause;
+      depth += 1;
+    }
+
+    return root;
+  }
+
+  private mapValidationException(
+    exception: ZodValidationException,
+  ): MappedException {
+    const error = exception.getZodError();
+
+    if (!(error instanceof ZodError)) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        code: ApiErrorCode.ValidationError,
+        publicMessage: "Request validation failed.",
+        diagnostics: {
+          validationErrorAvailable: false,
+        },
+      };
+    }
+
+    const validationIssues = error.issues.map((issue) => ({
+      code: issue.code,
+      path: issue.path.map(String),
+      message: issue.message,
+    }));
+
+    return {
+      statusCode: HttpStatus.BAD_REQUEST,
+      code: ApiErrorCode.ValidationError,
+      publicMessage: error.issues[0]?.message ?? "Request validation failed.",
+      diagnostics: {
+        validationIssues,
+      },
+    };
+  }
+
+  private publicMessageForHttpException(exception: HttpException): string {
+    const statusCode = exception.getStatus();
+
+    if (statusCode >= 500) {
+      return this.messageForStatus(statusCode);
+    }
+
+    const response = exception.getResponse();
+
+    if (typeof response === "string" && response.trim().length > 0) {
+      return response;
+    }
+
+    if (typeof response === "object" && response !== null && "message" in response) {
+      const message = response.message;
+
+      if (typeof message === "string" && message.trim().length > 0) {
+        return message;
+      }
+
+      if (Array.isArray(message)) {
+        const messages = message.filter(
+          (value): value is string => typeof value === "string" && value.trim().length > 0,
+        );
+
+        if (messages.length > 0) {
+          return messages.join("; ");
+        }
+      }
+    }
+
+    return this.messageForStatus(statusCode);
   }
 
   private codeForStatus(statusCode: number): ApiErrorCode {

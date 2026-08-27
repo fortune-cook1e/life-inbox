@@ -17,10 +17,10 @@ export class MessagesController {
   async createMessage(@Body() input: CreateMessageDto): Promise<MessageTurnResponse> {
     const turn = await this.messagesService.createMessage(input);
 
-    return [
-      toUserTextMessageResponse(turn.userMessage),
-      toAssistantTurnMessageResponse(turn.assistantMessage),
-    ];
+    return {
+      userMessage: toUserTextMessageResponse(turn.userMessage),
+      assistantMessage: toAssistantTurnMessageResponse(turn.assistantMessage),
+    };
   }
 
   @Get()

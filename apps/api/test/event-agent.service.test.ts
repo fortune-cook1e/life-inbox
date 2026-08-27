@@ -80,5 +80,8 @@ describe("EventAgentService", () => {
 
     expect(actualError).toBeInstanceOf(EventAgentRequestError);
     expect((actualError as EventAgentRequestError).cause).toBe(providerError);
+    expect((actualError as EventAgentRequestError).publicMessage).toBe(
+      "The Event assistant could not process your message. Please try again.",
+    );
   });
 });

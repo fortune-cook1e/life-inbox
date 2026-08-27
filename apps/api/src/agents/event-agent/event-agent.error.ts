@@ -6,6 +6,8 @@ export class EventAgentRequestError extends ApplicationServiceUnavailableError {
   constructor(cause: unknown) {
     super("Event Agent request failed.", {
       cause,
+      publicMessage:
+        "The Event assistant could not process your message. Please try again.",
     });
   }
 }

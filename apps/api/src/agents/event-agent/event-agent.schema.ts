@@ -49,7 +49,7 @@ const eventCandidateSchema = z
   })
   .strict();
 
-const eventAgentResultSchema = z.discriminatedUnion("kind", [
+const eventAgentResultSchema = z.union([
   z
     .object({
       kind: z.literal("event"),

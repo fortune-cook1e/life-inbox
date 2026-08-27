@@ -426,7 +426,7 @@ describe("Event Draft lifecycle HTTP workflow", () => {
     expect(envelope).toEqual({
       code: ApiErrorCode.ValidationError,
       data: null,
-      message: "Request validation failed.",
+      message: "Event Draft must contain a title, start time, and valid timezone.",
     });
 
     const persistedDraft = await database.db.query.eventDrafts.findFirst({
@@ -509,7 +509,7 @@ describe("Event Draft lifecycle HTTP workflow", () => {
     expect(errorEnvelope).toEqual({
       code: ApiErrorCode.Conflict,
       data: null,
-      message: "The request conflicts with the current resource state.",
+      message: "Event Draft cannot be rejected from status 'rejected'.",
     });
 
     expect(await countCancellationMessages()).toBe(cancellationCountBefore + 1);

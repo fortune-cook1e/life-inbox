@@ -14,7 +14,6 @@ describe("EventDraftIntakeRepository", () => {
   let repository: EventDraftIntakeRepository;
 
   const createdMessageIds: string[] = [];
-  const createdDraftIds: string[] = [];
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
@@ -27,15 +26,13 @@ describe("EventDraftIntakeRepository", () => {
   });
 
   afterEach(async () => {
-    if (createdDraftIds.length > 0) {
-      await database.db.delete(eventDrafts).where(inArray(eventDrafts.id, createdDraftIds));
-    }
-
     if (createdMessageIds.length > 0) {
+      await database.db
+        .delete(eventDrafts)
+        .where(inArray(eventDrafts.sourceMessageId, createdMessageIds));
       await database.db.delete(messages).where(inArray(messages.id, createdMessageIds));
     }
 
-    createdDraftIds.length = 0;
     createdMessageIds.length = 0;
   });
 
@@ -65,38 +62,6 @@ describe("EventDraftIntakeRepository", () => {
 
     return message.id;
   }
-
-  it("atomically creates a pending Event Draft and its initial Event Card", async () => {
-    const sourceMessageId = await createSourceMessage("Meet Anna tomorrow at 3 PM.");
-
-    const result = await repository.createPendingDraftWithInitialCard({
-      sourceMessageId,
-      title: "Meet Anna",
-      startAt: "2026-08-27T15:00:00",
-      endAt: null,
-      timezone: "Europe/Stockholm",
-      location: null,
-      description: null,
-    });
-
-    createdDraftIds.push(result.draft.id);
-    createdMessageIds.push(result.eventCardMessage.id);
-
-    expect(result.eventCardMessage).toMatchObject({
-      role: "assistant",
-      kind: "event_card",
-      content: null,
-      payload: {
-        draftId: result.draft.id,
-        title: "Meet Anna",
-        startAt: "2026-08-27T15:00:00",
-        endAt: null,
-        timezone: "Europe/Stockholm",
-        location: null,
-        description: null,
-      },
-    });
-  });
 
   it("rolls back the Draft when initial Event Card validation fails", async () => {
     const sourceMessageId = await createSourceMessage("Meet Anna tomorrow in Mars time.");

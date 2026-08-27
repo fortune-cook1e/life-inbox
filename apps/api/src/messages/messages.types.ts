@@ -34,7 +34,7 @@ export interface MessageTurn {
   assistantMessage: MessageRow;
 }
 
-export type MessageTurnResponse = [
-  userMessage: TextMessageResponse & { role: "user" },
-  assistantMessage: AssistantTurnMessageResponse,
-];
+export interface MessageTurnResponse {
+  userMessage: TextMessageResponse & { role: "user" };
+  assistantMessage: AssistantTurnMessageResponse;
+}

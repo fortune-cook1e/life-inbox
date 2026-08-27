@@ -1,6 +1,6 @@
 # LifeInbox Handoff
 
-Updated: 2026-08-26
+Updated: 2026-08-27
 
 ## Scope and working agreement
 
@@ -30,13 +30,17 @@ Updated: 2026-08-26
   adoption remains paused.
 - A global interceptor wraps successful responses as `{ code, data, message }`;
   the global exception filter preserves HTTP statuses and uses the same envelope
-  for safe errors. Request IDs remain in the `x-request-id` header.
+  for safe errors. Validation and controlled HTTP failures return an explicit
+  public message, while internal diagnostics and unexpected-error stacks stay
+  in request-ID-correlated logs. Request IDs remain in the `x-request-id` header.
 - Typed application service failures such as Event Agent provider failures map
   to `503/ServiceUnavailable`; invalid Event Draft transitions map to
   `422/ValidationError` without leaking feature errors into common HTTP code.
 - `MessagesModule` exposes `POST /api/messages` and `GET /api/messages`.
 - `POST /api/messages` persists user input and runs the fixed Event extraction
   workflow using the request timezone and backend-owned current time.
+- Its response returns the persisted turn as the named object
+  `{ userMessage, assistantMessage }`, not a positional tuple.
 - `GET /api/messages` returns persisted history ordered by backend-generated
   `sequence`.
 - `EventAgentService` owns prompt/schema composition and receives its model
@@ -99,11 +103,10 @@ its allowed tools, stop limits, fallback, and one missing-field acceptance case.
   rebuild and `0005` only creates `events`. The existing local database already
   has the final schema; no database command was run while consolidating the files.
 - AI SDK dependencies were removed; API LLM code is LangChain-only.
-- The pre-review API suite passed 24/24 tests on 2026-08-26. The current
-  post-review changes have not been run yet. Event Draft Edit, Confirm, and
-  Reject HTTP behavior now share one lifecycle suite instead of one file per
-  endpoint group; duplicate DTO validation unit tests were removed because the
-  HTTP workflow already proves that boundary.
+- The current post-review changes have not been run yet. Tests are limited to
+  core workflows, business state transitions, transaction rollback, and database
+  invariants; duplicate framework, schema-shape, and health wiring tests were
+  removed.
 
 ## Canonical documents
 

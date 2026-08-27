@@ -15,7 +15,10 @@ import { EVENT_AGENT_MODEL } from "../src/agents/event-agent/event-agent-model.p
 import { AppModule } from "../src/app.module";
 import { DatabaseService } from "../src/database/database.service";
 import { eventDrafts, messages } from "../src/database/schemas";
-import type { MessageResponse, MessageTurnResponse } from "../src/messages/messages.types";
+import type {
+  MessageResponse,
+  MessageTurnResponse,
+} from "../src/messages/messages.types";
 
 describe("Messages HTTP workflow", () => {
   let app: INestApplication;
@@ -95,8 +98,7 @@ describe("Messages HTTP workflow", () => {
     expect(envelope.code).toBe(API_SUCCESS_CODE);
     expect(envelope.message).toBe(API_SUCCESS_MESSAGE);
 
-    const turn = envelope.data;
-    const [userMessage, eventCardMessage] = turn;
+    const { userMessage, assistantMessage: eventCardMessage } = envelope.data;
 
     expect(userMessage).toMatchObject({
       role: "user",
@@ -154,7 +156,10 @@ describe("Messages HTTP workflow", () => {
 
     expect(userIndex).toBeGreaterThanOrEqual(0);
     expect(eventCardIndex).toBe(userIndex + 1);
-    expect(history.slice(userIndex, eventCardIndex + 1)).toEqual(turn);
+    expect(history.slice(userIndex, eventCardIndex + 1)).toEqual([
+      userMessage,
+      eventCardMessage,
+    ]);
   });
 
   it("rejects an invalid timezone before persisting the user message", async () => {
@@ -178,7 +183,7 @@ describe("Messages HTTP workflow", () => {
     expect(errorEnvelope).toEqual({
       code: ApiErrorCode.ValidationError,
       data: null,
-      message: "Request validation failed.",
+      message: "Timezone must be a valid IANA timezone identifier.",
     });
 
     const accidentallyPersistedMessages = await database.db
