@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 
-import { normalizeTimeZone } from "../common/time";
+import { normalizeTimeZone } from "../utils/time";
 import { EventDraftIntakeRepository } from "./event-draft-intake.repository";
 import { EventDraftTransitionsRepository } from "./event-draft-transitions.repository";
 import {

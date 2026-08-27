@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isValidTimeZone } from "../../common/time";
+import { isValidTimeZone } from "../../utils";
 
 export const eventAgentInputSchema = z
   .object({

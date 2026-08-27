@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { EventDraftRow, EventRow, MessageRow, NewEventDraftRow } from "../database/schemas";
-import { isValidTimeZone } from "../common/time";
+import { isValidTimeZone } from "../utils/time";
 
 const localDateTimeSchema = z.iso
   .datetime({

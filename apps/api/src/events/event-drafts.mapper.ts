@@ -1,5 +1,5 @@
 import type { EventDraftRow, MessageRow } from "../database/schemas";
-import { normalizeLocalDateTime } from "../common/time";
+import { normalizeLocalDateTime } from "../utils/time";
 import {
   eventCardPayloadSchema,
   eventConfirmPayloadSchema,
