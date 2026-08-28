@@ -1,3 +1,4 @@
+import { AIMessage } from "@langchain/core/messages";
 import { fakeModel } from "@langchain/core/testing";
 import {
   API_SUCCESS_CODE,
@@ -29,19 +30,21 @@ describe("Messages HTTP workflow", () => {
   const createdDraftIds: string[] = [];
 
   beforeAll(async () => {
-    const model = fakeModel().structuredResponse({
-      result: {
-        kind: "event",
-        event: {
-          title: "Meet Anna",
-          startAt: "2026-08-27T15:00:00",
-          endAt: null,
-          timezone: null,
-          location: "Stockholm University",
-          description: null,
+    const model = fakeModel()
+      .respondWithTools([
+        {
+          name: "create_event_draft",
+          args: {
+            title: "Meet Anna",
+            startAt: "2026-08-27T15:00:00",
+            endAt: null,
+            timezone: null,
+            location: "Stockholm University",
+            description: null,
+          },
         },
-      },
-    });
+      ])
+      .respond(new AIMessage("The Event Draft is ready for review."));
 
     moduleRef = await Test.createTestingModule({
       imports: [AppModule],

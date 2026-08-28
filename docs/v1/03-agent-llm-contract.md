@@ -6,10 +6,11 @@ state ownership, persistence, or public API changes.
 
 ## Status
 
-The design is approved. Implementation has not started.
+The design is approved. Slice 1 is implemented and awaiting post-implementation
+verification. Slice 2 has not started.
 
-V1 is Event-only and uses LangChain and LangGraph. The existing fixed Event
-extraction workflow remains active until Slice 1 replaces it.
+V1 is Event-only and uses LangChain and LangGraph. The bounded Tool Calling
+workflow has replaced the fixed Event extraction path.
 
 ## Goals
 
@@ -81,9 +82,17 @@ supplies:
 1. backend-owned current date/time;
 2. the request timezone;
 3. up to 10 recent timeline interactions before the current message;
-4. incomplete pending Drafts;
+4. up to the 10 most recently created incomplete pending Drafts;
 5. the source user message for each candidate Draft;
 6. the current user message exactly once.
+
+Recent timeline interactions enter model calls as real LangChain Human and AI
+messages through a custom `createMiddleware` runtime adapter. The middleware
+receives an immutable per-run context; it does not query PostgreSQL on every
+model call or persist product history into LangGraph state.
+
+Pending Draft details are not duplicated in the system prompt. The Agent uses
+`find_incomplete_event_drafts` when it needs the authoritative candidate snapshot.
 
 LangChain short-term memory holds the messages and tool results produced inside
 that run. If the run is interrupted, the checkpointer preserves this state and
@@ -98,7 +107,8 @@ timeline and no separate conversation entity.
 
 ## Agent tools
 
-The final allow-list contains five tools.
+The final allow-list contains five tools. Slice 1 currently exposes the first
+three; Confirm and Reject join the Agent only in Slice 2.
 
 ### `find_incomplete_event_drafts`
 
@@ -115,6 +125,7 @@ model cannot choose either value.
 
 Updates one pending candidate Draft. The backend validates its ID, current
 status, field schema, timezone, and temporal ordering before persistence.
+The update and its assistant Event Card snapshot are written atomically.
 
 ### `confirm_event_draft`
 
@@ -144,6 +155,11 @@ An incomplete result returns missing or invalid field information to the Agent,
 which may ask one focused clarification. A complete result allows the Agent to
 propose `confirm_event_draft`.
 
+A date without an explicit time is incomplete. The model must return `startAt`
+as null rather than inventing `00:00`; midnight is valid only when the user states
+it explicitly. This semantic rule is prompt- and live-eval-enforced in Slice 1,
+while backend validation remains authoritative for datetime format and ordering.
+
 ## Bounded execution
 
 One Agent run has these limits:
@@ -156,6 +172,13 @@ One Agent run has these limits:
 - model calls use the existing 15 second timeout and one provider retry;
 - model and other external calls stay outside database transactions.
 
+The terminal model response uses a Zod `responseFormat` containing one required
+user-facing `message`. LangChain validates and exposes it through
+`structuredResponse`; application code does not parse the final LangChain
+message representation. The model does not return a business `kind`: the backend
+continues to derive clarification versus ready-Draft behavior from persisted
+Draft fields and tool outcomes.
+
 Three tool calls are required for the longest normal path:
 
 ```text
@@ -166,6 +189,16 @@ find incomplete Drafts
 
 Confirm and Reject return a deterministic application outcome after execution;
 the graph does not need another model call to describe the transition.
+
+## Tool observability
+
+A custom runtime middleware logs `started`, `completed`, and `failed` events for
+every Agent tool call. Slice 1 correlates them with `sourceMessageId`; Slice 2
+replaces that temporary correlation key with the persisted Agent run ID.
+
+Logs include the tool name, tool-call ID, duration, and sanitized error type. They
+exclude user content, Event fields, tool arguments, and raw provider or database
+errors.
 
 ## HITL decisions
 
@@ -273,8 +306,14 @@ fails later, that user message remains in the timeline.
 
 - Invalid model tool arguments are rejected before business persistence.
 - A missing or non-pending Draft produces a controlled tool failure.
-- A model or provider failure maps through the existing Event Agent error
-  boundary without exposing internal diagnostics.
+- A model/provider failure before any Draft mutation maps through the Event
+  Agent service-unavailable boundary without exposing internal diagnostics.
+- After a successful Draft mutation, a later model failure cannot turn the
+  committed operation into an HTTP failure. The backend returns the persisted
+  Event Card with a deterministic clarification when required and logs the
+  fallback without exposing user or Event content.
+- Tool persistence, Agent contract, and loop-limit failures are not classified
+  as provider unavailability; they propagate through the internal-error boundary.
 - A checkpointer failure cannot execute a final transition.
 - Repeated decisions are rejected by `agent_runs.status` and existing Draft and
   Event constraints.
@@ -318,6 +357,8 @@ Slice 1 replaces fixed extraction with the three read and Draft tools, context
 assembly, bounded execution, clarification, and the opt-in real-model acceptance
 entry point. Existing public Confirm and Reject endpoints remain available, so
 the backend stays usable before Slice 2.
+
+Implementation status: complete, awaiting post-implementation verification.
 
 ### Slice 2: Postgres checkpointer and HITL
 

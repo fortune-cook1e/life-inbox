@@ -130,4 +130,51 @@ describe("EventDraftsService", () => {
 
     expect(persistedDrafts).toHaveLength(0);
   });
+
+  it("finds an incomplete pending Draft and atomically persists its Agent update card", async () => {
+    const sourceMessageId = await createSourceMessage("Meet Anna tomorrow.");
+    const creation = await eventDraftsService.createPendingDraftWithInitialCard({
+      sourceMessageId,
+      defaultTimezone: "Europe/Stockholm",
+      event: {
+        title: "Meet Anna",
+        startAt: null,
+        endAt: null,
+        timezone: null,
+        location: null,
+        description: null,
+      },
+    });
+    createdMessageIds.push(creation.eventCardMessage.id);
+
+    const contexts = await eventDraftsService.findIncompletePendingDraftContexts();
+    expect(contexts).toContainEqual({
+      draft: creation.draft,
+      sourceMessageContent: "Meet Anna tomorrow.",
+    });
+
+    const update = await eventDraftsService.updatePendingDraftFromAgent(creation.draft.id, {
+      startAt: "2026-08-28T15:00:00",
+    });
+
+    expect(update).toMatchObject({
+      kind: "updated",
+      draft: {
+        id: creation.draft.id,
+        startAt: "2026-08-28 15:00:00",
+      },
+      eventCardMessage: {
+        role: "assistant",
+        kind: "event_card",
+        payload: {
+          draftId: creation.draft.id,
+          startAt: "2026-08-28T15:00:00",
+        },
+      },
+    });
+
+    if (update.kind === "updated") {
+      createdMessageIds.push(update.eventCardMessage.id);
+    }
+  });
 });

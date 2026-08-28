@@ -1,13 +1,13 @@
 # LifeInbox Handoff
 
-Updated: 2026-08-27
+Updated: 2026-08-28
 
 ## Scope and working agreement
 
 - V1 is Event-only. Email features are out of scope.
 - Current work is backend-only in `apps/api`; frontend work is paused.
-- The fixed Event extraction workflow is complete. The approved replacement is
-  a bounded LangGraph Tool Calling Agent followed by LangChain HITL.
+- The fixed Event extraction workflow has been replaced by the first bounded
+  LangGraph Tool Calling slice. LangChain HITL remains the next Agent slice.
 - Use the LangChain ecosystem for new LLM work. Do not add AI SDK usage.
 - Codex provides reference code and design explanations; the user handwrites
   production and feature implementation unless direct implementation is
@@ -33,20 +33,39 @@ Updated: 2026-08-27
   for safe errors. Validation and controlled HTTP failures return an explicit
   public message, while internal diagnostics and unexpected-error stacks stay
   in request-ID-correlated logs. Request IDs remain in the `x-request-id` header.
-- Typed application service failures such as Event Agent provider failures map
-  to `503/ServiceUnavailable`; invalid Event Draft transitions map to
-  `422/ValidationError` without leaking feature errors into common HTTP code.
+- Event Agent provider failures before mutation map to
+  `503/ServiceUnavailable`. After a committed Draft mutation, a later model
+  failure returns the Event Card with a deterministic clarification when needed;
+  tool persistence and internal Agent failures remain `500` errors. Invalid Event
+  Draft transitions map to `422/ValidationError`.
 - `MessagesModule` exposes `POST /api/messages` and `GET /api/messages`.
-- `POST /api/messages` persists user input and runs the fixed Event extraction
-  workflow using the request timezone and backend-owned current time.
+- `POST /api/messages` persists user input, loads up to 10 prior timeline
+  interactions, and runs the bounded Event Agent using the request timezone and
+  backend-owned current time.
 - Its response returns the persisted turn as the named object
   `{ userMessage, assistantMessage }`, not a positional tuple.
 - `GET /api/messages` returns persisted history ordered by backend-generated
   `sequence`.
-- `EventAgentService` owns prompt/schema composition and receives its model
-  through a private Nest injection token.
-- Deterministic service tests cover structured Event output and model-failure
-  mapping without calling OpenAI.
+- `EventAgentService` owns the LangGraph Tool Calling loop and receives its model
+  through a private Nest injection token. Runs allow at most three model calls,
+  three tool calls, and one Draft mutation; OpenAI parallel tool calls are disabled.
+- A custom `createMiddleware` adapter injects recent timeline interactions as
+  LangChain messages before each model call. Pending Draft details are not copied
+  into the system prompt and remain available through the read tool.
+- The same runtime middleware logs tool start, completion, and failure with the
+  source Message ID, tool name, tool-call ID, and duration. It does not log user
+  content, Event fields, tool arguments, or raw internal errors.
+- Its current tools are `find_incomplete_event_drafts`, `create_event_draft`, and
+  `update_event_draft`. Source Message IDs and default timezones remain trusted
+  backend context rather than model arguments.
+- The Agent's terminal reply uses a Zod `responseFormat` with one user-facing
+  `message`. LangChain owns structured-output parsing; the backend still decides
+  whether that message is clarification text or accompanies a complete Draft.
+- Deterministic service tests cover tool routing, ambiguous Draft protection,
+  the mutation limit, and model-failure mapping without calling OpenAI.
+- Date-only input must leave `startAt` null; it must not be converted to midnight
+  unless the user explicitly says midnight. The live acceptance case uses
+  `Meet Anna tomorrow` to guard this semantic contract.
 - `event_drafts` and its migration are implemented. PostgreSQL enforces one
   Draft per source message through a named unique constraint.
 - The Event Draft database integration test covers the duplicate-source
@@ -57,14 +76,18 @@ Updated: 2026-08-27
 - The message timeline stores text, assistant Event Card snapshots, and user
   Event Edit, Confirm, and Reject interactions. PostgreSQL enforces their
   role/content/payload shapes.
-- `MessagesService` validates Event Card payloads before persistence, and
-  message history maps text and Event Card rows through a discriminated response.
-- The fixed message workflow persists user input, invokes `EventAgentService`,
-  and routes text results or Event results without an Agent loop.
+- Event persistence repositories validate Event Card payloads before writing,
+  and message history maps text and Event Card rows through a discriminated response.
+- The message workflow persists user input, supplies recent timeline context,
+  invokes `EventAgentService`, and persists Agent clarification text when a Draft
+  remains incomplete.
 - `EventDraftIntakeRepository` owns atomic Draft-plus-initial-Card creation.
 - `EventDraftTransitionsRepository` owns Edit, Confirm, and Reject transactions.
   `EventDraftsService` returns application outcomes; the controller alone maps
   them to HTTP exceptions.
+- `EventDraftAgentRepository` owns incomplete pending-Draft lookup and atomic
+  Agent update-plus-Event-Card persistence. Agent context includes at most the
+  10 most recently created incomplete pending Drafts.
 - Event action response contracts and mappers belong to `EventsModule`.
   `MessagesModule` depends on them only to render the combined timeline; Events
   does not import Messages presentation code.
@@ -90,19 +113,16 @@ Phase 3, Event Human-in-the-Loop, is complete for the backend. Edit, Confirm,
 and Reject allow only pending Draft transitions and persist their state change
 and timeline interaction atomically.
 
+Phase 4 Slice 1, bounded Tool Calling and clarification, is implemented. Its red
+tests were observed before implementation. The normal API suite passed after the
+post-mutation fallback and error-boundary fixes.
+
 ## Next slice
 
-Phase 4 is split into two independently usable slices:
-
-1. Replace fixed extraction with bounded Tool Calling and clarification. Add
-   recent timeline and pending Draft context, `find_incomplete_event_drafts`,
-   `create_event_draft`, `update_event_draft`, strict call limits, and a small
-   opt-in real-model acceptance suite. Keep the current Confirm and Reject HTTP
-   endpoints until this slice is complete.
-2. Add `agent_runs`, a Postgres LangGraph checkpointer, approval/status APIs,
-   and `approve`, `deny`, and `reject_event` decisions. Then remove the public
-   Draft Confirm and Reject endpoints; the resumed Agent run becomes the only
-   public final-transition path.
+Verify Phase 4 Slice 1. After it is green, Slice 2 adds `agent_runs`, a Postgres
+LangGraph checkpointer, approval/status APIs, and `approve`, `deny`, and
+`reject_event` decisions. It then removes the public Draft Confirm and Reject
+endpoints; the resumed Agent run becomes the only public final-transition path.
 
 ## Known follow-ups
 
@@ -112,15 +132,18 @@ Phase 4 is split into two independently usable slices:
   rebuild and `0005` only creates `events`. The existing local database already
   has the final schema; no database command was run while consolidating the files.
 - AI SDK dependencies were removed; API LLM code is LangChain-only.
+- `pnpm --filter @life-inbox/api test:agent:live` runs five opt-in real-model
+  acceptance scenarios and is excluded from normal paid-model-free verification.
 - LangGraph short-term memory is scoped to one Agent run. Product conversation
   history remains in `messages`; Draft and Event state remains authoritative in
   PostgreSQL.
 - Stale approval-preview protection is intentionally deferred for the current
   single-user V1. A resumed decision acts on the latest valid pending Draft.
-- The current post-review changes have not been run yet. Tests are limited to
-  core workflows, business state transitions, transaction rollback, and database
-  invariants; duplicate framework, schema-shape, and health wiring tests were
-  removed.
+- The normal API suite passed 24/24 tests on 2026-08-28; all five paid live-Agent
+  tests were skipped as intended. Typecheck, lint, and build have not been run.
+  Tests remain limited to core workflows, business state transitions, transaction
+  rollback, and database invariants; duplicate framework, schema-shape, and
+  health wiring tests were removed.
 
 ## Canonical documents
 

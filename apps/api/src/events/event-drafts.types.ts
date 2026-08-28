@@ -185,6 +185,22 @@ export interface PendingEventDraftCreationResult {
   eventCardMessage: MessageRow;
 }
 
+export interface IncompletePendingEventDraftContext {
+  draft: EventDraftRow;
+  sourceMessageContent: string;
+}
+
+export type AgentEventDraftUpdateResult =
+  | {
+      kind: "updated";
+      draft: EventDraftRow;
+      eventCardMessage: MessageRow;
+    }
+  | {
+      kind: "invalid_draft";
+    }
+  | EventDraftTransitionFailure;
+
 export type EventDraftTransitionFailure =
   | {
       kind: "not_found";

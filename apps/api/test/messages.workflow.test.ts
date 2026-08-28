@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventAgentService } from "../src/agents/event-agent/event-agent.service";
 import type { EventDraftRow, MessageRow } from "../src/database/schemas";
-import { EventDraftsService } from "../src/events/event-drafts.service";
 import { MessagesRepository } from "../src/messages/messages.repository";
 import { MessagesService } from "../src/messages/messages.service";
 
@@ -61,20 +60,30 @@ const assistantTextMessage: MessageRow = {
   createdAt: currentDateTime,
 };
 
-describe("MessagesService fixed Event workflow", () => {
+const clarificationMessage: MessageRow = {
+  ...assistantTextMessage,
+  id: "b49ea711-7d69-4832-bb81-35425a67c6e7",
+  sequence: 3,
+  content: "What time should this Event start?",
+};
+
+const incompleteUserMessage: MessageRow = {
+  ...userMessage,
+  id: "96b24938-1ee3-43b2-85cf-b505a0f7e68d",
+  content: "Meet Anna tomorrow.",
+};
+
+describe("MessagesService Event Agent workflow", () => {
   let moduleRef: TestingModule | undefined;
   let messagesService: MessagesService;
 
   const messagesRepository = {
     createTextMessage: vi.fn(),
+    findRecentBeforeSequence: vi.fn(),
   };
 
   const eventAgentService = {
-    extractEvent: vi.fn(),
-  };
-
-  const eventDraftsService = {
-    createPendingDraftWithInitialCard: vi.fn(),
+    run: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -82,8 +91,8 @@ describe("MessagesService fixed Event workflow", () => {
     vi.setSystemTime(currentDateTime);
 
     messagesRepository.createTextMessage.mockReset();
-    eventAgentService.extractEvent.mockReset();
-    eventDraftsService.createPendingDraftWithInitialCard.mockReset();
+    messagesRepository.findRecentBeforeSequence.mockReset();
+    eventAgentService.run.mockReset();
 
     moduleRef = await Test.createTestingModule({
       providers: [
@@ -95,10 +104,6 @@ describe("MessagesService fixed Event workflow", () => {
         {
           provide: EventAgentService,
           useValue: eventAgentService,
-        },
-        {
-          provide: EventDraftsService,
-          useValue: eventDraftsService,
         },
       ],
     }).compile();
@@ -116,21 +121,11 @@ describe("MessagesService fixed Event workflow", () => {
   it("creates an Event Draft and Event Card for an Event result", async () => {
     messagesRepository.createTextMessage.mockResolvedValue(userMessage);
 
-    eventAgentService.extractEvent.mockResolvedValue({
-      kind: "event",
-      event: {
-        title: "Meet Anna",
-        startAt: "2026-08-27T15:00:00",
-        endAt: null,
-        timezone: null,
-        location: null,
-        description: null,
-      },
-    });
-
-    eventDraftsService.createPendingDraftWithInitialCard.mockResolvedValue({
-      draft: eventDraft,
+    messagesRepository.findRecentBeforeSequence.mockResolvedValue([]);
+    eventAgentService.run.mockResolvedValue({
+      kind: "event_card",
       eventCardMessage,
+      clarification: null,
     });
 
     const result = await messagesService.createMessage({
@@ -143,23 +138,17 @@ describe("MessagesService fixed Event workflow", () => {
       content: "Meet Anna tomorrow at 3 PM.",
     });
 
-    expect(eventAgentService.extractEvent).toHaveBeenCalledWith({
+    expect(messagesRepository.findRecentBeforeSequence).toHaveBeenCalledWith(
+      userMessage.sequence,
+      10,
+    );
+
+    expect(eventAgentService.run).toHaveBeenCalledWith({
       content: "Meet Anna tomorrow at 3 PM.",
+      sourceMessageId: userMessage.id,
       currentDateTime: "2026-08-26T08:00:00.000Z",
       userTimezone: "Europe/Stockholm",
-    });
-
-    expect(eventDraftsService.createPendingDraftWithInitialCard).toHaveBeenCalledWith({
-      sourceMessageId: userMessage.id,
-      defaultTimezone: "Europe/Stockholm",
-      event: {
-        title: "Meet Anna",
-        startAt: "2026-08-27T15:00:00",
-        endAt: null,
-        timezone: null,
-        location: null,
-        description: null,
-      },
+      history: [],
     });
 
     expect(result).toEqual({
@@ -173,7 +162,8 @@ describe("MessagesService fixed Event workflow", () => {
       .mockResolvedValueOnce(userMessage)
       .mockResolvedValueOnce(assistantTextMessage);
 
-    eventAgentService.extractEvent.mockResolvedValue({
+    messagesRepository.findRecentBeforeSequence.mockResolvedValue([]);
+    eventAgentService.run.mockResolvedValue({
       kind: "text",
       response: "I can help you create Events.",
     });
@@ -193,11 +183,35 @@ describe("MessagesService fixed Event workflow", () => {
       content: "I can help you create Events.",
     });
 
-    expect(eventDraftsService.createPendingDraftWithInitialCard).not.toHaveBeenCalled();
-
     expect(result).toEqual({
       userMessage,
       assistantMessage: assistantTextMessage,
+    });
+  });
+
+  it("persists the Agent clarification after an incomplete Event Card", async () => {
+    messagesRepository.createTextMessage
+      .mockResolvedValueOnce(incompleteUserMessage)
+      .mockResolvedValueOnce(clarificationMessage);
+    messagesRepository.findRecentBeforeSequence.mockResolvedValue([]);
+    eventAgentService.run.mockResolvedValue({
+      kind: "event_card",
+      eventCardMessage,
+      clarification: "What time should this Event start?",
+    });
+
+    const result = await messagesService.createMessage({
+      content: "Meet Anna tomorrow.",
+      timezone: "Europe/Stockholm",
+    });
+
+    expect(messagesRepository.createTextMessage).toHaveBeenNthCalledWith(2, {
+      role: "assistant",
+      content: "What time should this Event start?",
+    });
+    expect(result).toEqual({
+      userMessage: incompleteUserMessage,
+      assistantMessage: clarificationMessage,
     });
   });
 
@@ -206,19 +220,8 @@ describe("MessagesService fixed Event workflow", () => {
 
     messagesRepository.createTextMessage.mockResolvedValue(userMessage);
 
-    eventAgentService.extractEvent.mockResolvedValue({
-      kind: "event",
-      event: {
-        title: "Meet Anna",
-        startAt: "2026-08-27T15:00:00",
-        endAt: null,
-        timezone: null,
-        location: null,
-        description: null,
-      },
-    });
-
-    eventDraftsService.createPendingDraftWithInitialCard.mockRejectedValue(persistenceError);
+    messagesRepository.findRecentBeforeSequence.mockResolvedValue([]);
+    eventAgentService.run.mockRejectedValue(persistenceError);
 
     await expect(
       messagesService.createMessage({
@@ -228,6 +231,6 @@ describe("MessagesService fixed Event workflow", () => {
     ).rejects.toBe(persistenceError);
 
     expect(messagesRepository.createTextMessage).toHaveBeenCalledOnce();
-    expect(eventDraftsService.createPendingDraftWithInitialCard).toHaveBeenCalledOnce();
+    expect(eventAgentService.run).toHaveBeenCalledOnce();
   });
 });

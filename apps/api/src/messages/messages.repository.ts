@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { asc } from "drizzle-orm";
+import { asc, desc, lt } from "drizzle-orm";
 
 import { DatabaseService } from "../database/database.service";
 import { messages, type MessageRow } from "../database/schemas";
@@ -33,5 +33,16 @@ export class MessagesRepository {
 
   async findAll(): Promise<MessageRow[]> {
     return this.database.db.select().from(messages).orderBy(asc(messages.sequence));
+  }
+
+  async findRecentBeforeSequence(sequence: number, limit: number): Promise<MessageRow[]> {
+    const recentMessages = await this.database.db
+      .select()
+      .from(messages)
+      .where(lt(messages.sequence, sequence))
+      .orderBy(desc(messages.sequence))
+      .limit(limit);
+
+    return recentMessages.reverse();
   }
 }

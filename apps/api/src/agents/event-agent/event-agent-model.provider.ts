@@ -9,7 +9,7 @@ const EVENT_AGENT_MAX_RETRIES = 1;
 
 export const EVENT_AGENT_MODEL = Symbol("EVENT_AGENT_MODEL");
 
-export type EventAgentModel = Pick<BaseChatModel, "withStructuredOutput">;
+export type EventAgentModel = BaseChatModel;
 
 export const eventAgentModelProvider: FactoryProvider<EventAgentModel> = {
   provide: EVENT_AGENT_MODEL,
@@ -19,5 +19,8 @@ export const eventAgentModelProvider: FactoryProvider<EventAgentModel> = {
       apiKey: getOpenAiApiKey(),
       maxRetries: EVENT_AGENT_MAX_RETRIES,
       timeout: EVENT_AGENT_TIMEOUT_MS,
+      modelKwargs: {
+        parallel_tool_calls: false,
+      },
     }),
 };
