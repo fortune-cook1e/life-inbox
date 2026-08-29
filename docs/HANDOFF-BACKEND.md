@@ -54,5 +54,5 @@ approval/status APIs, and `approve`, `deny`, and `reject_event` decisions. It
 then removes the public Draft Confirm and Reject endpoints so resumed Agent
 runs become the only public final-transition path.
 
-See `docs/v1/03-agent-llm-contract.md` for the complete Agent design and
+See `docs/v1/agent-llm-contract.md` for the complete Agent design and
 trade-offs.

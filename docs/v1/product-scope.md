@@ -6,9 +6,9 @@ V1 is an Event Assistant with one persistent conversation per user.
 
 The first version contains one capability:
 
-- Event workflow, followed by a bounded Event Agent
+- a bounded Event Agent backed by a persistent human-in-the-loop Event workflow
 
-The goal is to build a small but complete human-in-the-loop workflow before introducing more advanced capabilities such as memory, RAG, or multi-agent collaboration.
+The goal is to build a small but complete Event workflow before introducing more advanced capabilities such as memory, RAG, or multi-agent collaboration. The Agent may interpret input, use narrow Event tools, and ask focused clarification questions; backend validation and PostgreSQL remain authoritative.
 
 ---
 
@@ -55,20 +55,20 @@ If the message contains an Event intent:
 ```text
 User Message
     ↓
-LLM
+Bounded Event Agent
     ↓
-Event Information Extraction
+Backend-owned Event tools
     ↓
-Event Card
+Event Draft
+    ├── incomplete → focused clarification
+    └── complete   → Event Card for human review
 ```
 
-The LLM extracts as much information as possible from the user's message.
+The Agent extracts only information supported by the user's message and may use recent persisted interactions and incomplete pending Drafts as bounded context. Missing fields remain empty rather than being invented.
 
-The initial fixed workflow does **not** ask follow-up questions for missing information.
+When required information is missing, the Agent may ask one focused clarification question. The user's answer starts a new run that reconstructs context from persisted interaction and Draft state. The user may also complete or correct fields directly in the Event Card.
 
-Missing fields remain empty and can be completed manually by the user directly in the Event Card.
-
-A later V1 phase may add focused clarification through a bounded Event Agent after the fixed workflow is working.
+The backend validates every tool request and state transition before persistence.
 
 ---
 
@@ -415,19 +415,24 @@ Final Business Result
 ```text
 Natural-Language Input
         ↓
-Intent Detection
+Bounded Event Agent
         ↓
      Event?
      /    \
    No      Yes
    ↓        ↓
-Text     Event Extraction
-Response      ↓
-          Event Card
-              ↓
-      Edit / Confirm / Reject
-              ↓
-        Confirmed Event
+Event-only  Create or update
+fallback    Event Draft
+                ↓
+          Complete?
+           /     \
+         No       Yes
+         ↓         ↓
+   Clarification  Event Card
+                      ↓
+             Edit / Confirm / Reject
+                      ↓
+               Final Event or cancellation
 ```
 
 ---
@@ -462,10 +467,11 @@ V1 is successful when a user can complete the following flow:
 
 ```text
 Enter natural-language text
+→ Receive a focused clarification when required
 → Receive an Event Card
 → Edit Event information
 → Confirm or Reject
-→ Persist the interaction
+→ Persist every visible interaction
 → Reopen the application
 → See the complete original interaction
 ```

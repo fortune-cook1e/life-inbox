@@ -35,8 +35,8 @@ Updated: 2026-08-28
 ## Canonical documents
 
 - `docs/v1/product-scope.md`
-- `docs/v1/03-agent-llm-contract.md`
-- `docs/v1/05-implementation-roadmap.md`
+- `docs/v1/agent-llm-contract.md`
+- `docs/v1/implementation-roadmap.md`
 - `apps/api/AGENTS.md`
 
 Older Email-related V1 content is obsolete when it conflicts with these files.

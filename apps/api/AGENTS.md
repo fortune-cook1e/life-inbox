@@ -268,7 +268,7 @@ observed for test-first slices rather than assumed.
 
 ## Current V1 decisions
 
-- `docs/v1/product-scope.md` and `docs/v1/05-implementation-roadmap.md` are the
+- `docs/v1/product-scope.md` and `docs/v1/implementation-roadmap.md` are the
   canonical V1 documents. Treat conflicting Email content in older technical
   documents as obsolete V1 guidance.
 - V1 is Event-only. Do not implement Email generation or delivery.

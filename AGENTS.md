@@ -1,38 +1,159 @@
-# Collaboration rules
+# LifeInbox repository instructions
 
-This repository is both a product project and a backend/Agent learning project.
+## Repository purpose
 
-## Instruction priority
+LifeInbox is a V1 Event Assistant with one persistent conversation per user. It
+is both a product project and a backend/Agent learning project, so work should
+optimize for understanding, correctness, and small observable progress rather
+than maximum implementation speed.
 
-When repository guidance conflicts, use this order:
+## Product scope and invariants
+
+- V1 is Event-only. Email generation or delivery, memory, RAG, document upload,
+  multi-agent collaboration, task management, recurring Events, proactive
+  actions, and multiple conversations are out of scope.
+- A user can submit natural-language text, receive an editable Event Draft, and
+  edit, confirm, or reject it.
+- Every visible interaction must be persisted and replayable after refresh.
+- Interaction history records what happened; Event business data records the
+  final confirmed result. Do not collapse these into one representation.
+- PostgreSQL and validated backend tool results are authoritative over client or
+  model claims.
+- Keep LLM and other external calls outside database transactions.
+
+See `docs/v1/product-scope.md` for the complete V1 behavior and acceptance
+criteria.
+
+## Workspace and technology map
+
+This is a pnpm TypeScript monorepo:
+
+```text
+apps/web          Next.js App Router, React, Tailwind CSS, shadcn/ui
+apps/api          NestJS, Drizzle ORM, PostgreSQL, LangChain/LangGraph
+packages/shared   Shared API envelope and error contracts
+```
+
+Infrastructure used in local development:
+
+- PostgreSQL is the system of record.
+- Redis is available through Docker Compose but must not be used without a
+  current requirement.
+- The browser calls the NestJS API directly; there is no Next.js BFF.
+
+Package manifests and the current code are authoritative for exact dependency
+versions and implemented structure.
+
+## Architecture and ownership
+
+The main data flow is:
+
+```text
+Browser
+  -> NestJS controller and runtime validation
+  -> application service
+  -> PostgreSQL and/or Event Agent
+  -> validated, persisted interactions and Event state
+  -> browser reloads the authoritative timeline
+```
+
+Ownership boundaries:
+
+- React owns rendering, forms, and temporary interaction state.
+- NestJS owns public API validation, application workflows, and state
+  transitions.
+- PostgreSQL owns persisted interaction and Event state.
+- The Event Agent interprets input and may select bounded tools; it does not own
+  persistence decisions.
+- Backend tools validate every Agent-requested state transition before
+  persistence.
+- `packages/shared` owns only contracts that have real consumers in more than
+  one application.
+
+Prefer dependencies that point from delivery layers toward capability-owned
+services and explicit infrastructure boundaries. Do not let the frontend or an
+Agent write directly to the database.
+
+## Common commands
+
+Run commands from the repository root unless a scoped instruction says
+otherwise.
+
+```bash
+pnpm dev              # run web and API
+pnpm dev:web          # run Next.js only
+pnpm dev:api          # run NestJS only
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm format:check
+pnpm test:api         # deterministic API test suite
+
+pnpm db:up
+pnpm db:down
+pnpm db:generate
+pnpm db:migrate
+pnpm db:check
+pnpm db:studio
+```
+
+Use committed migrations for shared and production environments. `pnpm db:push`
+is reserved for approved local schema experimentation and is not a production
+migration mechanism.
+
+Normal tests must use deterministic model doubles and must not consume paid API
+credits. Do not run paid live-Agent scenarios unless explicitly requested.
+
+## Instruction and documentation authority
+
+For working instructions, use this order:
 
 1. The nearest scoped `AGENTS.md`.
 2. The explicitly approved task scope and authorization.
-3. Canonical V1 documents.
-4. `docs/HANDOFF.md` as a status snapshot.
-5. Older technical documentation.
+3. This repository `AGENTS.md`.
+4. Canonical V1 documents.
+5. Handoff documents.
+6. Older technical documentation.
 
-Current code, schemas, migrations, and git state remain authoritative for
-implementation facts. Explicit task authorization does not override repository
-safety, security, or data-protection rules.
+Explicit task authorization does not override repository safety, security, or
+data-protection rules. Current code, schemas, migrations, package manifests,
+and Git state remain authoritative for implementation facts.
 
-Rule language is intentional:
+The complete canonical V1 documentation set is:
 
-- **Must**, **do not**, and imperative rules are required.
-- **Should** and **prefer** are defaults; explain a concrete reason to deviate.
-- **Consider** means assess and report relevance, not automatically implement.
+- `docs/v1/product-scope.md`: product behavior, invariants, and boundaries.
+- `docs/v1/agent-llm-contract.md`: Agent context, tools, limits, HITL,
+  validation, public API direction, and persistence flow.
+- `docs/v1/implementation-roadmap.md`: implementation order and phase
+  acceptance scope.
 
-## Handoff
+Status snapshots are separate from canonical design:
 
-- Read `docs/HANDOFF.md` before planning or implementing repository work.
-- Treat it as a concise status snapshot. Current code and git state remain the
-  source of truth when they conflict with the handoff.
-- Update it after completing a slice or a major feature, or when a decision
-  changes the active scope or next slice.
-- Replace stale entries instead of appending a progress log. Keep the document
-  short enough to scan at the start of every task.
+- `docs/HANDOFF.md`: repository status and current priority.
+- `docs/HANDOFF-BACKEND.md` and `docs/HANDOFF-FRONTEND.md`: current area
+  status, transitions, and verification gaps.
 
-## Task flow
+Do not create another V1 document when one of the three canonical documents has
+the correct ownership. Update the owning document in the same slice. Surface
+conflicts between documentation and current code instead of silently choosing
+one.
+
+## Scoped instructions
+
+- Read `docs/HANDOFF.md` before planning or implementing repository work, then
+  read the handoff for the affected area.
+- Follow `apps/api/AGENTS.md` for backend, database, NestJS, and Agent learning
+  work.
+- If a scoped frontend `AGENTS.md` is added, follow it for work under
+  `apps/web`; until then, this file and the frontend handoff apply.
+- Keep scoped framework details out of this root file unless they establish a
+  cross-application invariant.
+
+Handoffs are status snapshots, not progress logs. Update the relevant handoff
+after completing a slice or major feature, or when a decision changes the
+active scope or next slice. Replace stale entries and keep handoffs short.
+
+## Task flow and authorization
 
 A preferred task brief contains:
 
@@ -41,53 +162,65 @@ A preferred task brief contains:
 - Decisions
 - Done when
 
-For discussion, review, or diagnosis, do not modify files unless explicitly
-asked.
+For discussion, review, explanation, or diagnosis, do not modify files unless
+explicitly asked.
 
-If the request is vague, such as "let's do the next part":
+If a request is vague, such as "let's do the next part":
 
-1. Inspect the current code and git status.
+1. Inspect the current code, instructions, handoffs, and Git status.
 2. Summarize what is already complete.
 3. Propose exactly one smallest observable vertical slice.
-4. Explain its outcome, data flow, invariants, non-goals, failure experiment,
-   acceptance tests, and conflicts with existing documentation.
+4. Explain its outcome, data flow, main invariant, non-goals, failure
+   experiment, acceptance tests, and documentation conflicts.
 5. Ask for one material decision and wait for approval.
 
-If the slice is already approved and implementation is explicitly authorized,
+If a slice is already approved and implementation is explicitly authorized,
 start without requesting another confirmation.
 
-## Implementation rules
+During implementation:
 
 - Implement only the approved slice.
 - Preserve unrelated staged, unstaged, and untracked changes.
 - Prefer an observable end-to-end path over speculative infrastructure.
-- Do not add packages, schema fields, or abstractions without a current
-  requirement.
+- Do not add packages, schema fields, services, queues, caches, or abstractions
+  without a current requirement.
 - Review schema constraints and migration impact before generating migrations.
-- Keep LLM and other external calls outside database transactions.
-- Do not commit or push unless explicitly requested.
+- Do not commit, push, deploy, publish, or perform destructive data operations
+  unless explicitly authorized.
 
-## Agent rules
+## Agent-specific rules
 
-- Keep `docs/v1/03-agent-llm-contract.md` synchronized with every change to the
+- Keep `docs/v1/agent-llm-contract.md` synchronized with every change to the
   Agent's context, action contract, validation boundary, tools, loop limits, or
   persistence flow.
 - Use bounded Agent loops with explicit stop conditions.
-- The LLM may interpret input, choose tools, ask questions, and propose changes.
-- Backend tools validate every state transition before persistence.
-- PostgreSQL and tool results are authoritative over model claims.
+- The LLM may interpret input, choose tools, ask questions, and propose changes;
+  backend tools remain authoritative for state transitions.
 - Do not expose generic database-write tools to the Agent.
-- Use deterministic mock models in normal tests; do not consume paid API credits.
+- Preserve one validated production write path rather than adding alternate
+  paths for tests or Agent convenience.
 
-## Verification and learning
+## Verification and completion
 
-- Follow the nearest scoped `AGENTS.md` for test-first and learning workflow.
-- Provide the relevant verification commands that are actually defined by the
-  affected package.
-- Run verification only when the user explicitly authorizes it, and report what
-  was and was not run.
-- Verify the happy path and one important failure path proportionally to the
-  change.
-- Explain the final data flow, the main invariant, and one prevented failure.
-- Ask one short conceptual question before another slice only when the current
-  slice introduced a meaningful concept.
+Verification commands may be run only when the user explicitly authorizes it.
+Otherwise, provide the exact commands defined by the affected package and report
+them as not run.
+
+When verification is authorized:
+
+- verify the happy path and the most important failure path proportionally to
+  the change;
+- use the smallest test layer that proves the affected invariant;
+- use test-first development for changed core business rules, important state
+  transitions, transaction behavior, security constraints, and bug regressions;
+- do not weaken assertions or use paid model calls to make routine tests pass.
+
+Before reporting completion:
+
+- review the final diff for unrelated changes;
+- update affected contracts and handoffs when required;
+- report what changed and why;
+- report exactly which checks ran and their results;
+- report what was not verified and any remaining risk;
+- explain the final data flow, main invariant, and one prevented failure for a
+  non-trivial slice.
