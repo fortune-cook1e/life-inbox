@@ -1,5 +1,5 @@
-import { LifeInboxApp } from "@/components/life-inbox/life-inbox-app";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <LifeInboxApp />;
+  redirect("/event-chat");
 }

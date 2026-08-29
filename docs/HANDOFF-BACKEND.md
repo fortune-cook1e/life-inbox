@@ -2,57 +2,37 @@
 
 Updated: 2026-08-28
 
-## Implemented
+## Current status
 
-- NestJS bootstrap, API environment loading, PostgreSQL, Drizzle, graceful
-  shutdown, `HealthModule`, and global Zod validation are implemented.
-- NestJS currently allows all CORS origins and exposes `x-request-id` to browser
-  clients. This fits the credential-free development V1; restore an explicit
-  origin allowlist before credentialed authentication or public production use.
-- The shared package owns the API envelope and numeric error codes. Successes
-  use `{ code: 0, data, message: "success" }`; safe errors preserve the HTTP
-  status and request ID without exposing internal diagnostics.
-- `POST /api/messages` persists the user message, loads up to 10 prior timeline
-  interactions, and invokes the bounded Event Agent with backend time and the
-  request timezone. It returns `{ userMessage, assistantMessage }`.
-- `GET /api/messages` returns the persisted timeline ordered by database
-  sequence.
-- Messages persist text, `event_card`, `event_edit`, `event_confirm`, and
-  `event_reject` interactions with database-enforced shapes.
-- `EventsModule` owns Event Draft creation, Agent updates, manual edits,
-  confirmation, rejection, and final Event creation.
-- `PATCH /api/event-drafts/:draftId`, `POST .../confirm`, and `POST .../reject`
-  expose the current Event human-in-the-loop workflow.
-- Draft mutations and their timeline interactions are atomic. One source
-  message creates at most one Draft; one Draft creates at most one Event.
+- NestJS, Drizzle, PostgreSQL, global Zod validation, request IDs, safe API
+  envelopes, and persisted interaction replay are implemented.
+- Message and Event workflows persist text, Event Cards, edits, confirmations,
+  and rejections. Draft transitions and their timeline interactions are atomic;
+  one source Message creates at most one Draft and one Draft at most one Event.
+- Agent Phase 4 Slice 1 uses bounded LangGraph tool calling to find, create, or
+  update pending Drafts and ask one clarification when required. PostgreSQL and
+  backend validation remain authoritative.
 
-## Event Agent
+## Active boundaries
 
-- Phase 4 Slice 1 uses a bounded LangGraph Tool Calling loop with no AI SDK.
-- The tools find incomplete Drafts, create one Draft, or update one Draft.
-- Runs allow at most three model calls, three tool calls, and one Draft
-  mutation. OpenAI parallel tool calls are disabled.
-- Middleware injects up to 10 recent interactions and logs tool lifecycle
-  metadata without user content, Event values, arguments, or raw errors.
-- Pending Draft state remains in PostgreSQL and is read through a tool.
-- The terminal response uses a Zod response format containing one public
-  message. Missing title or start time produces clarification text.
-- Date-only input must leave `startAt` null. It must not become midnight unless
-  the user explicitly says midnight.
+- Runs allow at most three model calls, three tool calls, and one Draft mutation;
+  OpenAI parallel tool calls are disabled and routine tests use model doubles.
+- Public Draft Edit/Confirm/Reject endpoints remain the temporary Phase 3 HITL
+  path. Slice 2 must replace Confirm/Reject with durable Agent decisions.
+- CORS currently allows all origins for credential-free development. Add an
+  explicit allowlist before credentialed authentication or public production.
 
-## Verification snapshot
+## Next slice
 
-- The normal API suite passed 24/24 on 2026-08-28.
-- Five paid live-Agent scenarios are excluded from normal verification.
-- Typecheck, lint, and build were not run for the Agent slice.
-- Routine Agent tests use deterministic model doubles and no paid credits.
+Agent Phase 4 Slice 2 is paused until frontend verification. It adds durable
+`agent_runs`, PostgreSQL checkpoints, status/recovery APIs, and bounded
+`approve`, `deny`, and `reject_event` decisions.
 
-## Paused next slice
+## Verification gaps
 
-Phase 4 Slice 2 adds `agent_runs`, a PostgreSQL LangGraph checkpointer,
-approval/status APIs, and `approve`, `deny`, and `reject_event` decisions. It
-then removes the public Draft Confirm and Reject endpoints so resumed Agent
-runs become the only public final-transition path.
+- Normal API suite passed 24/24 on 2026-08-28; five paid live-Agent scenarios
+  were skipped as intended.
+- Typecheck, lint, build, deployment, authentication, recovery, and production
+  security have not been verified.
 
-See `docs/v1/agent-llm-contract.md` for the complete Agent design and
-trade-offs.
+See `docs/v1/agent-llm-contract.md` for the authoritative Agent design.

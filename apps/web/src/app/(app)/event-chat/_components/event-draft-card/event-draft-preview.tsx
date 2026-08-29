@@ -60,11 +60,11 @@ export function EventDraftPreview({
   }, [confirmReject]);
 
   return (
-    <section aria-label="Calendar event draft" className="mt-4">
-      <Card className="gap-0 rounded-[20px] py-0 shadow-[0_1px_3px_rgba(35,31,24,0.12),0_12px_32px_rgba(35,31,24,0.06)] ring-0">
-        <CardHeader className="flex flex-col items-stretch gap-3 rounded-t-[20px] bg-accent/55 px-4 py-3.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-5">
+    <section aria-label="Calendar event draft" className="w-full max-w-xl">
+      <Card className="gap-0 rounded-2xl border border-border py-0 shadow-sm ring-0">
+        <CardHeader className="flex flex-col items-stretch gap-2.5 rounded-t-2xl bg-accent/55 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
               <CalendarDays className="size-4.5" aria-hidden="true" />
             </div>
             <div className="min-w-0">
@@ -78,14 +78,14 @@ export function EventDraftPreview({
           </div>
           <Badge
             variant="secondary"
-            className={`h-auto self-start px-2.5 py-1 text-[11px] font-semibold ${state.status === "rejected" && isLatestSnapshot ? "bg-rose-100 text-rose-900" : state.status === "confirmed" && isLatestSnapshot ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}
+            className={`h-auto self-start px-2 py-0.5 text-[10px] font-semibold ${state.status === "rejected" && isLatestSnapshot ? "bg-rose-100 text-rose-900 dark:bg-rose-950/45 dark:text-rose-100" : state.status === "confirmed" && isLatestSnapshot ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/45 dark:text-emerald-100" : "bg-amber-100 text-amber-900 dark:bg-amber-950/45 dark:text-amber-100"}`}
           >
             {statusLabel}
           </Badge>
         </CardHeader>
 
         <CardContent className="px-0">
-          <dl className="grid gap-3 px-4 py-4 text-sm sm:grid-cols-2 sm:px-5">
+          <dl className="grid gap-2.5 px-4 py-3.5 text-sm sm:grid-cols-2">
             <div className="flex gap-2.5 sm:col-span-2">
               <Clock3 className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               <div>
@@ -123,7 +123,7 @@ export function EventDraftPreview({
           </dl>
         </CardContent>
 
-        <CardFooter className="block rounded-b-[20px] bg-transparent px-4 py-3 sm:px-5">
+        <CardFooter className="block rounded-b-2xl bg-transparent px-4 py-3">
           <p className="text-xs leading-5 text-muted-foreground">
             {state.status === "confirmed" && isLatestSnapshot
               ? "Confirmed as an Event."
@@ -143,7 +143,7 @@ export function EventDraftPreview({
                     ref={rejectCancelRef}
                     type="button"
                     variant="secondary"
-                    size="touch"
+                    size="default"
                     onClick={() => {
                       setConfirmReject(false);
                       requestAnimationFrame(() => rejectTriggerRef.current?.focus());
@@ -155,7 +155,7 @@ export function EventDraftPreview({
                   <Button
                     type="button"
                     variant="destructive"
-                    size="touch"
+                    size="default"
                     onClick={onReject}
                     disabled={actionsDisabled || action !== null}
                   >
@@ -175,7 +175,7 @@ export function EventDraftPreview({
                   <Button
                     type="button"
                     variant="secondary"
-                    size="touch"
+                    size="default"
                     onClick={onEdit}
                     disabled={actionsDisabled || action !== null}
                   >
@@ -184,7 +184,7 @@ export function EventDraftPreview({
                   </Button>
                   <Button
                     type="button"
-                    size="touch"
+                    size="default"
                     onClick={onConfirm}
                     disabled={actionsDisabled || action !== null || !isComplete}
                     title={!isComplete ? "Add a title and start time before confirming" : undefined}
@@ -203,7 +203,7 @@ export function EventDraftPreview({
                     ref={rejectTriggerRef}
                     type="button"
                     variant="ghost"
-                    size="touch"
+                    size="default"
                     onClick={() => setConfirmReject(true)}
                     disabled={actionsDisabled || action !== null}
                     className="text-destructive [@media(hover:hover)]:hover:bg-destructive/10 [@media(hover:hover)]:hover:text-destructive"

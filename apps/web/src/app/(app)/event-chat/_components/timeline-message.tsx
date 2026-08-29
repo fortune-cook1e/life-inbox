@@ -5,7 +5,7 @@ import { Ban, CheckCircle2 } from "lucide-react";
 import { memo } from "react";
 
 import { AssistantMark } from "./assistant-mark";
-import type { DisplayTextMessage } from "./use-life-inbox";
+import type { DisplayTextMessage } from "@/stores/event-chat-store";
 
 interface TimelineMessageItemProps {
   message: TimelineMessage | DisplayTextMessage;
@@ -36,7 +36,7 @@ export const TimelineMessageItem = memo(function TimelineMessageItem({
     if (message.role === "user") {
       return (
         <article className="flex justify-end" aria-label="Your message">
-          <div className="max-w-[88%] rounded-[20px] rounded-br-md bg-foreground px-4 py-3 text-[15px] text-background shadow-[0_1px_2px_rgba(35,31,24,0.12)] sm:max-w-[76%]">
+          <div className="max-w-[88%] rounded-[20px] rounded-br-md bg-foreground px-4 py-3 text-[15px] text-background shadow-sm sm:max-w-[76%]">
             <p className="whitespace-pre-wrap break-words leading-7 text-pretty">
               {message.content}
             </p>
@@ -52,7 +52,7 @@ export const TimelineMessageItem = memo(function TimelineMessageItem({
     }
 
     return (
-      <article className="flex items-start gap-3" aria-label="LifeInbox message">
+      <article className="flex items-start gap-3" aria-label="Assistant message">
         <AssistantMark />
         <div className="min-w-0 flex-1 pt-1">
           <p className="max-w-[65ch] whitespace-pre-wrap break-words text-[15px] leading-7 text-foreground text-pretty">
@@ -81,7 +81,7 @@ export const TimelineMessageItem = memo(function TimelineMessageItem({
         aria-label={confirmed ? "Event confirmed" : "Event rejected"}
       >
         <div
-          className={`flex max-w-[88%] items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium ${confirmed ? "bg-emerald-100 text-emerald-900" : "bg-rose-100 text-rose-950"}`}
+          className={`flex max-w-[88%] items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium ${confirmed ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/45 dark:text-emerald-100" : "bg-rose-100 text-rose-950 dark:bg-rose-950/45 dark:text-rose-100"}`}
         >
           <Icon className="size-4" aria-hidden="true" />
           {confirmed ? "You confirmed this Event" : "You rejected this Event"}
@@ -93,20 +93,17 @@ export const TimelineMessageItem = memo(function TimelineMessageItem({
   if (!draftState) return null;
 
   return (
-    <article className="flex items-start gap-3" aria-label="Event draft interaction">
-      <AssistantMark />
-      <div className="min-w-0 flex-1">
-        <EventDraftCard
-          payload={message.payload}
-          state={draftState}
-          isLatestSnapshot={draftState.latestSnapshotId === message.id}
-          source={message.kind === "event_edit" ? "user_edit" : "agent"}
-          actionsDisabled={actionsDisabled}
-          onSave={onSave}
-          onConfirm={onConfirm}
-          onReject={onReject}
-        />
-      </div>
+    <article className="w-full sm:pl-11" aria-label="Event draft interaction">
+      <EventDraftCard
+        payload={message.payload}
+        state={draftState}
+        isLatestSnapshot={draftState.latestSnapshotId === message.id}
+        source={message.kind === "event_edit" ? "user_edit" : "agent"}
+        actionsDisabled={actionsDisabled}
+        onSave={onSave}
+        onConfirm={onConfirm}
+        onReject={onReject}
+      />
     </article>
   );
 }, areTimelineMessageItemPropsEqual);

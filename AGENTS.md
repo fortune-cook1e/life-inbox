@@ -149,9 +149,13 @@ one.
 - Keep scoped framework details out of this root file unless they establish a
   cross-application invariant.
 
-Handoffs are status snapshots, not progress logs. Update the relevant handoff
-after completing a slice or major feature, or when a decision changes the
-active scope or next slice. Replace stale entries and keep handoffs short.
+Handoffs are minimum-sufficient status snapshots, not progress logs or
+implementation inventories. Update the relevant handoff after completing a
+slice or major feature, or when a decision changes the active scope or next
+slice. Replace stale entries instead of appending history. Keep only information
+whose removal could cause incorrect continuation, duplicate work, a violated
+boundary, or a false verification claim; do not omit critical context merely to
+meet a line target.
 
 ## Task flow and authorization
 

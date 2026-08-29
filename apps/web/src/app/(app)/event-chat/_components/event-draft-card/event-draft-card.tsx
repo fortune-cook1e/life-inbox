@@ -56,7 +56,9 @@ export function EventDraftCard({
     try {
       await operation();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "LifeInbox could not save this action.");
+      setError(
+        caught instanceof Error ? caught.message : "The assistant could not save this action.",
+      );
     } finally {
       actionLockRef.current = false;
       setAction(null);

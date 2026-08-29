@@ -101,9 +101,9 @@ export function EventDraftEditor({
   }
 
   return (
-    <section aria-label="Edit calendar event draft" className="mt-4">
-      <Card className="gap-0 rounded-[20px] py-0 shadow-[0_1px_3px_rgba(35,31,24,0.12),0_12px_32px_rgba(35,31,24,0.06)] ring-0">
-        <CardHeader className="flex flex-row items-center justify-between gap-3 rounded-t-[20px] bg-accent/55 px-4 py-3.5 sm:px-5">
+    <section aria-label="Edit calendar event draft" className="w-full max-w-xl">
+      <Card className="gap-0 rounded-2xl border border-border py-0 shadow-sm ring-0">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 rounded-t-2xl bg-accent/55 px-4 py-3">
           <div>
             <p className="text-xs font-medium text-muted-foreground">Editing calendar draft</p>
             <h2 className="mt-0.5 text-[15px] font-semibold">Review every value before saving</h2>
@@ -111,7 +111,7 @@ export function EventDraftEditor({
           <Button
             type="button"
             variant="ghost"
-            size="icon-touch"
+            size="icon"
             onClick={onCancel}
             disabled={isSaving || isSubmitting}
             aria-label="Cancel editing"
@@ -122,7 +122,7 @@ export function EventDraftEditor({
         </CardHeader>
 
         <form onSubmit={handleSubmit(saveDraft)} noValidate>
-          <CardContent className="grid gap-4 px-4 py-4 sm:grid-cols-2 sm:px-5">
+          <CardContent className="grid gap-3.5 px-4 py-3.5 sm:grid-cols-2">
             <DraftField
               id={`${formId}-title`}
               label="Title"
@@ -238,17 +238,17 @@ export function EventDraftEditor({
             </Alert>
           ) : null}
 
-          <CardFooter className="justify-end gap-2 rounded-b-[20px] bg-transparent px-4 py-3 sm:px-5">
+          <CardFooter className="justify-end gap-2 rounded-b-2xl bg-transparent px-4 py-3">
             <Button
               type="button"
               variant="secondary"
-              size="touch"
+              size="default"
               onClick={onCancel}
               disabled={isSaving || isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" size="touch" disabled={disabled || isSaving || isSubmitting}>
+            <Button type="submit" size="default" disabled={disabled || isSaving || isSubmitting}>
               {isSaving || isSubmitting ? (
                 <LoaderCircle className="size-4 motion-safe:animate-spin" aria-hidden="true" />
               ) : null}

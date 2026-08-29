@@ -1,6 +1,7 @@
-import type { ConnectionState } from "./use-life-inbox";
+import type { ConnectionState } from "@/stores/event-chat-store";
 import { Button } from "@/components/ui/button";
-import { Check, RefreshCw } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { RefreshCw } from "lucide-react";
 
 const CONNECTION_META: Record<ConnectionState, { label: string; dotClassName: string }> = {
   checking: {
@@ -28,15 +29,11 @@ export function ConversationHeader({
 
   return (
     <header className="shrink-0 border-b border-border/80 bg-background">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <div className="grid size-8 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Check className="size-4" strokeWidth={2.5} aria-hidden="true" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold leading-4">LifeInbox</h1>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Calendar assistant</p>
-          </div>
+      <div className="flex h-14 items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="size-9" />
+          <div className="h-5 w-px bg-border" aria-hidden="true" />
+          <h1 className="text-sm font-medium">Event Chat</h1>
         </div>
 
         <div className="flex items-center gap-1.5">

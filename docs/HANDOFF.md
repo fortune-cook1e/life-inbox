@@ -1,42 +1,33 @@
-# LifeInbox Handoff
+# Project Handoff
 
 Updated: 2026-08-28
 
-## Scope
+## Current scope and priority
 
-- V1 is Event-only. Email features are out of scope.
-- The current priority is completing the frontend against the implemented
-  backend before starting the next Agent slice.
-- LangChain is the only LLM ecosystem used by the API.
-
-## Working agreement
-
-- Read this file first, then read the handoff for the area being changed.
-- Current code, schemas, migrations, and git state remain authoritative.
-- Codex may implement explicitly approved feature work and approved tests.
-- Run verification only when explicitly authorized; otherwise provide the
-  package commands for the user to run.
-- Keep LLM calls outside database transactions and keep backend tools
-  authoritative over model claims.
-
-## Area handoffs
-
-- [Backend handoff](./HANDOFF-BACKEND.md)
-- [Frontend handoff](./HANDOFF-FRONTEND.md)
+- V1 is Event-only; Email, memory, RAG, multi-agent work, and multiple
+  conversations remain out of scope.
+- Finish and verify the current frontend before starting Agent Phase 4 Slice 2.
+- PostgreSQL is authoritative, and LangChain is the API's only LLM ecosystem.
 
 ## Current status
 
-- Backend Phases 1 through 3 and Agent Phase 4 Slice 1 are implemented.
-- The frontend contract and Event Draft interaction alignment is implemented
-  but has not yet been verified.
-- Agent Phase 4 Slice 2, LangChain HITL and durable checkpointing, is paused
-  until the current frontend is usable for end-to-end testing.
+- Backend Phases 1–3 and Agent Phase 4 Slice 1 are implemented.
+- The frontend has `/event-chat` and `/settings`, persisted timeline replay,
+  Event Draft actions, a responsive sidebar, and light/dark/system themes.
+- Frontend changes are implemented but not yet typechecked, linted, built, or
+  accepted in a running browser.
 
-## Canonical documents
+## Active boundary and next work
 
-- `docs/v1/product-scope.md`
-- `docs/v1/agent-llm-contract.md`
-- `docs/v1/implementation-roadmap.md`
-- `apps/api/AGENTS.md`
+- The frontend still calls the Phase 3 Draft Confirm/Reject endpoints. Agent
+  Slice 2 must replace them with the durable HITL decision API rather than keep
+  two public final-transition paths.
+- Next frontend slice: local IANA timezone preference. Agent Slice 2 remains
+  paused until the frontend is usable for end-to-end testing.
 
-Older Email-related V1 content is obsolete when it conflicts with these files.
+## Area handoffs
+
+- [Backend](./HANDOFF-BACKEND.md)
+- [Frontend](./HANDOFF-FRONTEND.md)
+- Canonical design: `docs/v1/product-scope.md`,
+  `docs/v1/agent-llm-contract.md`, and `docs/v1/implementation-roadmap.md`.

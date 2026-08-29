@@ -36,7 +36,7 @@ apiClient.interceptors.response.use(
     if (!isApiSuccessEnvelope(envelope)) {
       throw new ApiClientError(
         response.status,
-        "LifeInbox returned an invalid success response.",
+        "The API returned an invalid success response.",
         undefined,
         envelope,
         getRequestId(response),
@@ -56,7 +56,7 @@ function normalizeAxiosError(error: unknown): unknown {
   if (isTimeoutError(error)) {
     return new ApiClientError(
       408,
-      "LifeInbox took too long to respond. Reload the conversation before trying again.",
+      "The request took too long to complete. Reload the conversation before trying again.",
       undefined,
       null,
       getRequestId(error.response),
@@ -65,7 +65,7 @@ function normalizeAxiosError(error: unknown): unknown {
 
   const response = error.response;
   if (!response) {
-    return new ApiClientError(0, "LifeInbox could not reach the API.", undefined, null, undefined);
+    return new ApiClientError(0, "The API could not be reached.", undefined, null, undefined);
   }
 
   const envelope = response.data;
@@ -81,7 +81,7 @@ function normalizeAxiosError(error: unknown): unknown {
 
   return new ApiClientError(
     response.status,
-    "LifeInbox returned an invalid error response.",
+    "The API returned an invalid error response.",
     undefined,
     envelope,
     getRequestId(response),
