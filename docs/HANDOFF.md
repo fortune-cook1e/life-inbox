@@ -1,6 +1,6 @@
 # Project Handoff
 
-Updated: 2026-08-28
+Updated: 2026-09-02
 
 ## Current scope and priority
 
@@ -29,5 +29,6 @@ Updated: 2026-08-28
 
 - [Backend](./HANDOFF-BACKEND.md)
 - [Frontend](./HANDOFF-FRONTEND.md)
+- [Deployment](./HANDOFF-DEPLOYMENT.md)
 - Canonical design: `docs/v1/product-scope.md`,
   `docs/v1/agent-llm-contract.md`, and `docs/v1/implementation-roadmap.md`.
