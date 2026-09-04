@@ -9,7 +9,7 @@ the next phase begins.
 This document defines implementation order and phase acceptance scope. It is not
 a status log:
 
-- use `docs/HANDOFF.md` and the area handoffs for current progress;
+- use `docs/HANDOFF.md` for current progress;
 - use `product-scope.md` for product behavior and boundaries;
 - use `agent-llm-contract.md` for the complete Event Agent design.
 

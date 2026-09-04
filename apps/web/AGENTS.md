@@ -11,8 +11,7 @@ architecture must not imply that LifeInbox will always be Event-only. NestJS and
 PostgreSQL remain authoritative for business state; React owns rendering and
 temporary interaction state.
 
-Read `docs/HANDOFF.md` and `docs/HANDOFF-FRONTEND.md` before planning or
-implementing frontend work.
+Read `docs/HANDOFF.md` before planning or implementing frontend work.
 
 ## Directory architecture
 
@@ -174,8 +173,9 @@ route UI
   that requires them.
 - Do not add routes, state infrastructure, abstractions, or product behavior for
   hypothetical future capabilities.
-- Update `docs/HANDOFF-FRONTEND.md` after a completed frontend slice or when an
-  approved decision changes the active architecture.
+- Update `docs/HANDOFF.md` after a completed frontend slice or when an approved
+  decision changes the active architecture. Propose a separate Frontend Handoff
+  only when independent active workstreams make the Root Handoff insufficient.
 
 ## Verification
 

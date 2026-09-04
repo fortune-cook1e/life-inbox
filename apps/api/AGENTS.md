@@ -268,12 +268,15 @@ observed for test-first slices rather than assumed.
 
 ## Current V1 decisions
 
-- `docs/v1/product-scope.md` and `docs/v1/implementation-roadmap.md` are the
-  canonical V1 documents. Treat conflicting Email content in older technical
-  documents as obsolete V1 guidance.
+- `docs/canonical/product-scope.md` and
+  `docs/canonical/implementation-roadmap.md` are the canonical V1 documents.
+  Treat conflicting Email content in older technical documents as obsolete V1
+  guidance.
 - V1 is Event-only. Do not implement Email generation or delivery.
-- Build the fixed, single-pass Event extraction workflow first. Introduce a
-  bounded LangGraph tool loop only after that workflow is complete.
+- The fixed, single-pass Event extraction workflow established the initial
+  contracts and has been replaced by bounded LangGraph tool calling. Continue
+  the Agent only through the approved slices in the canonical roadmap and Agent
+  contract.
 - Use LangChain for model integration. Add LangGraph only when the bounded Agent
   loop begins.
 - Do not add new AI SDK usage. Remove existing AI SDK dependencies only in an

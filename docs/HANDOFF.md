@@ -1,34 +1,63 @@
 # Project Handoff
 
-Updated: 2026-09-02
+Updated: 2026-09-03
 
-## Current scope and priority
+## Current focus
 
-- V1 is Event-only; Email, memory, RAG, multi-agent work, and multiple
-  conversations remain out of scope.
-- Finish and verify the current frontend before starting Agent Phase 4 Slice 2.
-- PostgreSQL is authoritative, and LangChain is the API's only LLM ecosystem.
+Deployment is the only active workstream. Product, frontend, and Agent feature
+work remain paused while the minimal API deployment path is established.
 
-## Current status
+## Current state
 
-- Backend Phases 1–3 and Agent Phase 4 Slice 1 are implemented.
-- The frontend has `/event-chat` and `/settings`, persisted timeline replay,
-  Event Draft actions, a responsive sidebar, and light/dark/system themes.
-- Frontend changes are implemented but not yet typechecked, linted, built, or
-  accepted in a running browser.
+- Backend Phases 1-3 and Agent Phase 4 Slice 1 are implemented. The last
+  recorded normal API suite passed 24/24 on 2026-08-28; backend typecheck, lint,
+  and build remain unverified. Durable Agent HITL and resume have not started.
+- The frontend Event Chat and Settings surfaces are implemented but still need
+  typecheck, lint, build, and running-browser acceptance. It still uses the
+  temporary Phase 3 Draft Confirm/Reject endpoints; Agent Phase 4 Slice 2 must
+  replace them without retaining two public final-transition paths. The
+  timezone slice has not started.
+- The local production Docker path is verified: the API image builds, all six
+  committed migrations apply to a fresh PostgreSQL volume, database health
+  succeeds, migration state survives recreation, and invalid credentials make
+  migration fail. The isolated test resources were removed afterward.
+- No AWS workload resources have been created by the documented deployment
+  flow.
 
-## Active boundary and next work
+## Active boundary
 
-- The frontend still calls the Phase 3 Draft Confirm/Reject endpoints. Agent
-  Slice 2 must replace them with the durable HITL decision API rather than keep
-  two public final-transition paths.
-- Next frontend slice: local IANA timezone preference. Agent Slice 2 remains
-  paused until the frontend is usable for end-to-end testing.
+- Follow the approved API-only direction in
+  `docs/canonical/deployment.md`.
+- Do not begin a new product, frontend, or Agent slice during the deployment
+  workstream.
+- Do not create AWS workload resources before the standalone account, credits,
+  account plan, region, pricing, budgets, anomaly detection, tags, and cleanup
+  procedure are confirmed.
+- Every cloud mutation requires explicit approval. GitHub uses OIDC and EC2 uses
+  SSM; permanent AWS keys and inbound SSH are outside the approved path.
 
-## Area handoffs
+## Next step
 
-- [Backend](./HANDOFF-BACKEND.md)
-- [Frontend](./HANDOFF-FRONTEND.md)
-- [Deployment](./HANDOFF-DEPLOYMENT.md)
-- Canonical design: `docs/v1/product-scope.md`,
-  `docs/v1/agent-llm-contract.md`, and `docs/v1/implementation-roadmap.md`.
+Complete the AWS account and cost gate. Confirm the standalone account remains
+on the intended Free plan with active credits, choose and price the region and
+minimal resources, configure cost guardrails, and document cleanup before
+creating ECR, IAM deployment roles, EC2, or other workload resources.
+
+## Verification gaps and risks
+
+- The local Docker evidence above comes from the completed deployment slice; it
+  was not rerun during this documentation reorganization.
+- AWS identity, negative OIDC trust, ECR push, SSM deployment, EC2 runtime,
+  public HTTPS, backup/restore, rollback, and cleanup are not yet verified.
+- Authentication, authorization, production CORS, rate limits, and recovery
+  remain required before public use.
+- Frontend verification remains deferred and must not be reported as complete.
+
+## References
+
+- Deployment architecture: `docs/canonical/deployment.md`
+- Product scope: `docs/canonical/product-scope.md`
+- Agent design: `docs/canonical/agent-llm-contract.md`
+- Implementation order: `docs/canonical/implementation-roadmap.md`
+- Non-active future work: `docs/future-plan.md`
+- Personal AI workflow: `docs/agent-workflow.md`

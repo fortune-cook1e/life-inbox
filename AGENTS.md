@@ -21,8 +21,8 @@ than maximum implementation speed.
   model claims.
 - Keep LLM and other external calls outside database transactions.
 
-See `docs/v1/product-scope.md` for the complete V1 behavior and acceptance
-criteria.
+See `docs/canonical/product-scope.md` for the complete V1 behavior and
+acceptance criteria.
 
 ## Workspace and technology map
 
@@ -111,51 +111,54 @@ For working instructions, use this order:
 1. The nearest scoped `AGENTS.md`.
 2. The explicitly approved task scope and authorization.
 3. This repository `AGENTS.md`.
-4. Canonical V1 documents.
-5. Handoff documents.
+4. Canonical documents.
+5. The current Handoff.
 6. Older technical documentation.
 
 Explicit task authorization does not override repository safety, security, or
 data-protection rules. Current code, schemas, migrations, package manifests,
 and Git state remain authoritative for implementation facts.
 
-The complete canonical V1 documentation set is:
+The canonical documentation set is:
 
-- `docs/v1/product-scope.md`: product behavior, invariants, and boundaries.
-- `docs/v1/agent-llm-contract.md`: Agent context, tools, limits, HITL,
+- `docs/canonical/product-scope.md`: V1 product behavior, invariants, and
+  boundaries.
+- `docs/canonical/agent-llm-contract.md`: Agent context, tools, limits, HITL,
   validation, public API direction, and persistence flow.
-- `docs/v1/implementation-roadmap.md`: implementation order and phase
-  acceptance scope.
+- `docs/canonical/implementation-roadmap.md`: V1 implementation order and
+  phase acceptance scope.
+- `docs/canonical/deployment.md`: approved deployment architecture, identity,
+  delivery, cost, and data boundaries.
 
-Status snapshots are separate from canonical design:
+Current status is separate from canonical design:
 
-- `docs/HANDOFF.md`: repository status and current priority.
-- `docs/HANDOFF-BACKEND.md` and `docs/HANDOFF-FRONTEND.md`: current area
-  status, transitions, and verification gaps.
+- `docs/HANDOFF.md`: the active workstream, minimum system status, next slice,
+  verification gaps, blockers, and links to relevant canonical documents.
+- `docs/future-plan.md`: non-active possibilities that are not approved roadmap
+  or implementation authorization.
+- `docs/features/`: temporary briefs for approved large features.
 
-Do not create another V1 document when one of the three canonical documents has
-the correct ownership. Update the owning document in the same slice. Surface
-conflicts between documentation and current code instead of silently choosing
-one.
+Do not create another canonical document when an existing canonical document
+has the correct ownership. Update the owning document in the same slice.
+Surface conflicts between documentation and current code instead of silently
+choosing one.
 
 ## Scoped instructions
 
-- Read `docs/HANDOFF.md` before planning or implementing repository work, then
-  read the handoff for the affected area.
+- Read `docs/HANDOFF.md` before planning or implementing repository work.
 - Follow `apps/api/AGENTS.md` for backend, database, NestJS, and Agent learning
   work.
-- If a scoped frontend `AGENTS.md` is added, follow it for work under
-  `apps/web`; until then, this file and the frontend handoff apply.
+- Follow `apps/web/AGENTS.md` for work under `apps/web`.
 - Keep scoped framework details out of this root file unless they establish a
   cross-application invariant.
 
-Handoffs are minimum-sufficient status snapshots, not progress logs or
-implementation inventories. Update the relevant handoff after completing a
-slice or major feature, or when a decision changes the active scope or next
-slice. Replace stale entries instead of appending history. Keep only information
-whose removal could cause incorrect continuation, duplicate work, a violated
-boundary, or a false verification claim; do not omit critical context merely to
-meet a line target.
+The Handoff is a minimum-sufficient status snapshot, not a progress log or
+implementation inventory. Update `docs/HANDOFF.md` after completing a slice or
+major feature, or when a decision changes the active scope or next slice. Add
+Area Handoffs only when independent active workstreams make one Root Handoff
+insufficient. Replace stale entries instead of appending history. Keep only
+information whose removal could cause incorrect continuation, duplicate work, a
+violated boundary, or a false verification claim.
 
 ## Task flow and authorization
 
@@ -194,9 +197,9 @@ During implementation:
 
 ## Agent-specific rules
 
-- Keep `docs/v1/agent-llm-contract.md` synchronized with every change to the
-  Agent's context, action contract, validation boundary, tools, loop limits, or
-  persistence flow.
+- Keep `docs/canonical/agent-llm-contract.md` synchronized with every change to
+  the Agent's context, action contract, validation boundary, tools, loop
+  limits, or persistence flow.
 - Use bounded Agent loops with explicit stop conditions.
 - The LLM may interpret input, choose tools, ask questions, and propose changes;
   backend tools remain authoritative for state transitions.
